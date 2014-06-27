@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "arg1: np; arg2: matrix file name, without .mtx; arg3: #col; arg4: solver idx, arg5: s value"
+#echo "mpirun -np $1 ./dist/Debug/GNU-Linux-x86/ksms-nb /home/scl/MStore/ mesh1e1.mtx $2 $3 $4 $5"
+mpiexec -np $1 ./bin/KSMs $MSTORE/$2/ $2.mtx $MSTORE/$2/$2_$3.csv $3 $4 $5
