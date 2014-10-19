@@ -1,8 +1,8 @@
 #TARGET_LINK_LIBRARIES (KSMs )
 #LINK_DIRECTORIES ()
 
-#INCLUDE_DIRECTORIES(/opt/local/include/openmpi-devel-gcc45)
-INCLUDE_DIRECTORIES(/usr/include/mpi)
+INCLUDE_DIRECTORIES(/opt/local/include/openmpi-devel-gcc45)
+#INCLUDE_DIRECTORIES(/usr/include/mpi)
 file(GLOB_RECURSE SOURCES "*.c")
 #file(GLOB_RECURSE HEADERS "src/*.h")
 ADD_EXECUTABLE(KSMs ${SOURCES})

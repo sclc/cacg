@@ -8,6 +8,7 @@ SET (Tutorial_VERSION_MINOR 0)
 #SET (SRC main.c)
  
 # set linker
+# set the below Linker, MacOSx shows gcc-mp-4.5: no input files
 #SET (CMAKE_C_LINK_EXECUTABLE /opt/local/bin/mpicc)
 # add message
 MESSAGE(STATUS "binary dir is" ${PROJECT_BINARY_DIR} )
