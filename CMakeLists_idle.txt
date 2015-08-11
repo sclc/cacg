@@ -6,6 +6,9 @@ SET (Tutorial_VERSION_MINOR 0)
 
 # set source list
 #SET (SRC main.c)
+
+#SET(CMAKE_C_COMPILER /opt/FJSVtclang/GM-1.2.0-18/bin/mpifccpx)
+#SET(CMAKE_CXX_COMPILER /opt/FJSVtclang/GM-1.2.0-18/bin/mpiFCCpx)
  
 # set linker
 # set the below Linker, MacOSx shows gcc-mp-4.5: no input files
