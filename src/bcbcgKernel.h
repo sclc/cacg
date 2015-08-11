@@ -19,7 +19,7 @@ extern "C" {
 #include "DataTypes.h"
 #include "DLSsolvers.h"
     
-void bcbcg_v1 (csrType_local mat, denseType B, denseType X, int s, double epsilon, int myid, int numprocs);
+void bcbcg_v1 (csrType_local mat, denseType B, denseType X, long s, double epsilon, int myid, int numprocs);
 
 
 #ifdef	__cplusplus

@@ -13,15 +13,20 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include <mpi.h>
+#include <time.h>
 #include "DataTypes.h"
 #include "common.h"
     
-void GenVectorOne(int length, denseType * vector, int num_cols,int myid, int numprocs);
+
+void GenVectorOne(long length, denseType * vector, long num_cols,int myid, int numprocs);
+
+void GenVectorRandom(long length, denseType * vector, long num_cols, \
+	                 double ranMin, double ranMax, int myid, int numprocs);
 
 // 1st: make sure csv file has enough elements, dense matrix size is given
 // 2nd: rank0 read matrix, and then distribute MPI_Scatter
 
-void GenVector_ReadCSV(denseType * vector, int length, int num_cols, char* rhsFile,int myid, int numprocs);
+void GenVector_ReadCSV(denseType * vector, long length, long num_cols, char* rhsFile,int myid, int numprocs);
 
 
 #ifdef	__cplusplus

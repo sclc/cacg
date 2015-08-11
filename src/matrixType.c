@@ -3,14 +3,14 @@
 
 void Converter_Coo2Csr (cooType src, csrType_local * target, matInfo * mat_info)
 {
-    int idx, cumsum, last;
+    long idx, cumsum, last;
     
     target->num_rows = mat_info->num_rows;
     target->num_cols = mat_info->num_cols;
     target->nnz      = mat_info->nnz;
     
-    target->row_start = (int *) calloc (target->num_rows + 1, sizeof(int) );
-    target->col_idx   = (int *) calloc (target->nnz, sizeof (int));
+    target->row_start = (long *) calloc (target->num_rows + 1, sizeof(long) );
+    target->col_idx   = (long *) calloc (target->nnz, sizeof (long));
     target->csrdata   = (double *) calloc (target->nnz, sizeof(double));
     
     for (idx = 0; idx < mat_info->num_rows; idx++)
@@ -22,7 +22,7 @@ void Converter_Coo2Csr (cooType src, csrType_local * target, matInfo * mat_info)
 
     //cumsum the nnz per row to get Bp[]
     for(idx = 0, cumsum = 0; idx < mat_info->num_rows; idx++){     
-        int temp = target->row_start[idx];
+        long temp = target->row_start[idx];
         target->row_start[idx] = cumsum;
         cumsum += temp;
     }
@@ -31,11 +31,12 @@ void Converter_Coo2Csr (cooType src, csrType_local * target, matInfo * mat_info)
     // final csr, in row section unsorted by column or essentially sorted for 
     // coo sorted by col
     for(idx = 0; idx < mat_info->nnz; idx++){
-        int row  = src.rowIdx[idx];
-        int dest = target->row_start[row];
+        long row  = src.rowIdx[idx];
+        long dest = target->row_start[row];
 
         target->col_idx[dest] = src.colIdx [idx];
         target->csrdata[dest] = src.coodata[idx];
+        // printf ("%lf\n", target->csrdata[dest]);
 
         target->row_start[row]++;
     }
@@ -43,7 +44,7 @@ void Converter_Coo2Csr (cooType src, csrType_local * target, matInfo * mat_info)
     last = 0;
     // set back row_start values
     for( idx = 0; idx <= mat_info->num_rows; idx++){
-        int temp = target->row_start[idx];
+        long temp = target->row_start[idx];
         target->row_start[idx]  = last;
         last   = temp;
     }
@@ -84,15 +85,15 @@ void get_same_shape_denseType (denseType src, denseType *target)
 }
 
 void set_dense_to_zero (denseType mat){
-    int idx;
-    int total_elements = mat.local_num_col * mat.local_num_row;
+    long idx;
+    long total_elements = mat.local_num_col * mat.local_num_row;
     for ( idx=0; idx < total_elements; idx++){
         mat.data[idx] = 0.0;
     }
 }
 
-void gen_dense_mat (denseType *mat, int local_row_num, int local_col_num
-                  , int global_row_num, int global_col_num, int start_row_id){
+void gen_dense_mat (denseType *mat, long local_row_num, long local_col_num
+                  , long global_row_num, long global_col_num, long start_row_id){
     mat->global_num_col = global_col_num;
     mat->global_num_row = global_row_num;
     

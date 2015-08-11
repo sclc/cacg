@@ -10,7 +10,7 @@ void readMtx_info_and_coo(char* path, char* name, matInfo * info, cooType * mat)
     int m, n, nnz;
     MM_typecode matcode;
     FILE *fid;
-    int idx;
+    long idx;
 
     fid = fopen(concatStr(path, name), "r");
 
@@ -43,27 +43,39 @@ void readMtx_info_and_coo(char* path, char* name, matInfo * info, cooType * mat)
     info->num_rows = m;
     info->num_cols = n;
     info->nnz = nnz;
-
-    mat->rowIdx = (int *) calloc(info->nnz, sizeof (int));
-    mat->colIdx = (int *) calloc(info->nnz, sizeof (int));
+    // printf ("%ld, %ld, %ld", info->num_rows, info->num_cols, info->nnz);
+    // exit(0);
+    
+    mat->rowIdx = (long *) calloc(info->nnz, sizeof (long));
+    mat->colIdx = (long *) calloc(info->nnz, sizeof (long));
     mat->coodata = (double *) calloc(info->nnz, sizeof (double));
+    // printf ("so far so good K\n");
+    // exit(0);
+
 
     printf("Reading sparse matrix from file ( %s ):\n", concatStr(path, name));
 
     if (mm_is_pattern(matcode)) {
         // pattern matrix defines sparsity pattern, but not values
         for (idx = 0; idx < info->nnz; idx++) {
-            assert(fscanf(fid, " %d %d \n", &(mat->rowIdx[idx]), &(mat->colIdx[idx])) == 2);
+            assert(fscanf(fid, " %ld %ld \n", &(mat->rowIdx[idx]), &(mat->colIdx[idx])) == 2);
+            // possible bug place ,%d or %ld
+            // printf ("%ld, %ld\n", mat->rowIdx[idx], mat->colIdx[idx]);
+            // exit(0);
+
             mat->rowIdx[idx]--; //adjust from 1-based to 0-based indexing
             mat->colIdx[idx]--;
             mat->coodata[idx] = 1.0; //use value 1.0 for all nonzero entries 
         }
     } else if (mm_is_real(matcode) || mm_is_integer(matcode)) {
         for (idx = 0; idx < info->nnz; idx++) {
-            int I, J;
+            long I, J;
             double V; // always read in a double and convert later if necessary
 
-            assert(fscanf(fid, " %d %d %lf \n", &I, &J, &V) == 3);
+            assert(fscanf(fid, " %ld %ld %lf \n", &I, &J, &V) == 3);
+
+            // printf("%ld, %ld, %lf\n", I, J, V);
+        
 
             mat->rowIdx[idx] = I - 1;
             mat->colIdx[idx] = J - 1;
@@ -79,20 +91,20 @@ void readMtx_info_and_coo(char* path, char* name, matInfo * info, cooType * mat)
     printf(" done reading\n");
 
     if (mm_is_symmetric(matcode)) { //duplicate off diagonal entries
-        int off_diagonals = 0;
+        long off_diagonals = 0;
         // for spmv feature
         for (idx = 0; idx < info->nnz; idx++) {
             if (mat->rowIdx[idx] != mat->colIdx[idx])
                 off_diagonals++;
         }
 
-        int true_nonzeros = 2 * off_diagonals + (info->nnz - off_diagonals);
+        long true_nonzeros = 2 * off_diagonals + (info->nnz - off_diagonals);
 
-        int* new_I = (int *) calloc(true_nonzeros, sizeof (int)); 
-        int* new_J = (int *) calloc(true_nonzeros, sizeof (int)); 
+        long* new_I = (long *) calloc(true_nonzeros, sizeof (long)); 
+        long* new_J = (long *) calloc(true_nonzeros, sizeof (long)); 
         double* new_V = (double *) calloc(true_nonzeros, sizeof (double)); 
 
-        int ptr = 0;
+        long ptr = 0;
         for (idx = 0; idx < info->nnz; idx++) {
             if (mat->rowIdx[idx] != mat->colIdx[idx]) {
                 new_I[ptr] = mat->rowIdx[idx];

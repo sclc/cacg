@@ -5,24 +5,24 @@ void HoseHolder_QR_seq_v1(denseType mat, denseType q, denseType r) {
     if (q.data != 0) {
         free(q.data);
     }
-    int local_row_num = mat.local_num_row;
-    int local_col_num = mat.local_num_col;
+    long local_row_num = mat.local_num_row;
+    long local_col_num = mat.local_num_col;
     double * colDataTemp = (double*) calloc(local_row_num, sizeof (double));
 
     //ldmR: leading dimension
-    int ldmR = local_col_num;
+    long ldmR = local_col_num;
     // partial QR
-    int ldmQ = local_col_num;
+    long ldmQ = local_col_num;
     q.data = (double*) calloc(local_row_num * local_col_num, sizeof (double));
 
     // initialize q
-    int idx;
+    long idx;
     for (idx = 0; idx < local_col_num; idx++) {
         q.data[idx * ldmQ + idx] = 1.0;
     }
 
-    int stepsTotal = local_col_num;
-    int stepIdx;
+    long stepsTotal = local_col_num;
+    long stepIdx;
     for (stepIdx = 0; stepIdx < stepsTotal; stepIdx++) {
         double maxColVal = 0.0;
 
@@ -62,7 +62,7 @@ void HoseHolder_QR_seq_v1(denseType mat, denseType q, denseType r) {
         }
         
         // update q
-        int colIdx, rowIdx;
+        long colIdx, rowIdx;
         double totalTemp;
         for (colIdx = 0; colIdx < local_col_num; colIdx++){
             totalTemp = 0.0;

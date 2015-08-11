@@ -3,10 +3,16 @@
 #include "GetRHS.h"
 #include "DataTypes.h"
 
-void GenVectorOne(int length, denseType * vector, int num_cols, int myid, int numprocs) {
-    int idx;
-    int local_length, local_length_normal;
-    MPI_Bcast((void*) &length, 1, MPI_INT, 0, MPI_COMM_WORLD);
+// #define GenVectorRandom_DB
+
+// this can give a dense matrix in row-major
+void GenVectorOne(long length, denseType * vector, long num_cols, int myid, int numprocs) {
+    long idx;
+    long local_length, local_length_normal;
+    
+    // int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root, 
+    //            MPI_Comm comm )
+    MPI_Bcast((void*) &length, 1, MPI_LONG, 0, MPI_COMM_WORLD);
 #ifdef GETRHS_DEBUG
     printf("in GetRHS.c, myid=%d, length=%d\n", myid, length);
 #endif
@@ -31,8 +37,8 @@ void GenVectorOne(int length, denseType * vector, int num_cols, int myid, int nu
     vector->data = (double *) calloc(vector->local_num_row * vector->local_num_col, sizeof (double));
 
     //    if (myid == numprocs -1){
-    //        int start_idx = myid * local_length_normal * num_cols;
-    //        int end_idx   =  length * num_cols;
+    //        long start_idx = myid * local_length_normal * num_cols;
+    //        long end_idx   =  length * num_cols;
     //#ifdef GETRHS_DEBUG
     //        printf ("in GetRHS.c, myid=%d, start_idx=%d, end_idx=%d\n", myid, start_idx, end_idx);
     //#endif
@@ -41,8 +47,8 @@ void GenVectorOne(int length, denseType * vector, int num_cols, int myid, int nu
     //        }
     //    }
     //    else{
-    //        int start_idx = myid * local_length * num_cols;
-    //        int end_idx   = (myid + 1) * local_length * num_cols;
+    //        long start_idx = myid * local_length * num_cols;
+    //        long end_idx   = (myid + 1) * local_length * num_cols;
     //#ifdef GETRHS_DEBUG
     //        printf ("in GetRHS.c, myid=%d, start_idx=%d, end_idx=%d\n", myid, start_idx, end_idx);
     //#endif
@@ -50,7 +56,7 @@ void GenVectorOne(int length, denseType * vector, int num_cols, int myid, int nu
     //            vector->data[idx] = 1.0;
     //        }
     //    }
-    int local_num_element = vector->local_num_row * vector->local_num_col;
+    long local_num_element = vector->local_num_row * vector->local_num_col;
     for (idx = 0; idx < local_num_element; idx++) {
         vector->data[idx] = 1.0;
     }
@@ -60,19 +66,74 @@ void GenVectorOne(int length, denseType * vector, int num_cols, int myid, int nu
 
 }
 
+// this can give a dense matrix in row-major
+void GenVectorRandom(long length, denseType * vector, long num_cols, \
+                     double ranMin, double ranMax, int myid, int numprocs)
+{
+
+    srand (time(NULL));
+    double ranRange = ranMax - ranMin;
+
+    long idx;
+    long local_length, local_length_normal;
+    MPI_Bcast((void*) &length, 1, MPI_LONG, 0, MPI_COMM_WORLD);
+#ifdef GETRHS_DEBUG
+    printf("in GetRHS.c, myid=%d, length=%d\n", myid, length);
+#endif
+
+    local_length_normal = length / numprocs;
+    if (myid == numprocs - 1)
+        local_length = length - (numprocs - 1) * local_length_normal;
+    else
+        local_length = local_length_normal;
+#ifdef GETRHS_DEBUG
+    printf("in GetRHS.c, myid = %d, local_length=%d\n", myid, local_length);
+#endif
+    vector->local_num_row = local_length;
+    vector->local_num_col = num_cols; // only consider
+    vector->global_num_row = length;
+    vector->global_num_col = num_cols;
+
+#ifdef GETRHS_DEBUG
+    printf("in GetRHS.c, myid=%d, vector->local_num_col=%d\n", myid, vector->local_num_col);
+#endif
+
+    vector->data = (double *) calloc(vector->local_num_row * vector->local_num_col, sizeof (double));
+
+    long local_num_element = vector->local_num_row * vector->local_num_col;
+    for (idx = 0; idx < local_num_element; idx++) {
+        double ranTemp = ranMin + ( (double)rand() / (double)RAND_MAX ) * ranRange;  
+        vector->data[idx] = ranTemp;
+    }
+
+    // based on the assumption of equal division of rows among processes 
+    vector->start_idx = myid * vector->global_num_col * local_length_normal;
+#ifdef GenVectorRandom_DB
+
+    if (myid == numprocs-1) {
+        printf("start printing ...\n");
+        local_dense_mat_print(*vector, myid);
+    }
+    exit(0);
+#endif   
+
+}
+
 //#define GenVector_ReadCSV_DB
 
-void GenVector_ReadCSV(denseType * vector, int length, int num_cols, char* rhsFile, int myid, int numprocs) {
-    int idx;
-    int local_length, local_length_normal;
+void GenVector_ReadCSV(denseType * vector, long length, long num_cols, char* rhsFile, int myid, int numprocs) {
+    long idx;
+    long local_length, local_length_normal;
     int ierr;
     double * Total_data_buffer;
+
     int sendCount[numprocs];
     int sendDispls[numprocs];
-    int procCounter;
+
+    long procCounter;
     double normel_ele_num;
 
-    ierr = MPI_Bcast((void*) &length, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    ierr = MPI_Bcast((void*) &length, 1, MPI_LONG, 0, MPI_COMM_WORLD);
 
 #ifdef GETRHS_DEBUG
     printf("in GetRHS.c, myid=%d, length=%d\n", myid, length);
@@ -85,10 +146,10 @@ void GenVector_ReadCSV(denseType * vector, int length, int num_cols, char* rhsFi
         local_length = local_length_normal;
     normel_ele_num = local_length_normal * num_cols;
     for (procCounter = 0; procCounter < numprocs; procCounter++) {
-        sendCount[procCounter] = normel_ele_num;
-        sendDispls[procCounter] = procCounter * normel_ele_num;
+        sendCount[procCounter] = (int)normel_ele_num;
+        sendDispls[procCounter] = (int)procCounter * normel_ele_num;
     }
-    sendCount[numprocs - 1] = (length - (numprocs - 1) * local_length_normal) * num_cols;
+    sendCount[numprocs - 1] = (int)((length - (numprocs - 1) * local_length_normal) * num_cols);
 
 #ifdef GETRHS_DEBUG
     printf("in GetRHS.c, myid = %d, local_length=%d\n", myid, local_length);
@@ -104,7 +165,7 @@ void GenVector_ReadCSV(denseType * vector, int length, int num_cols, char* rhsFi
 
     vector->data = (double *) calloc(vector->local_num_row * vector->local_num_col, sizeof (double));
 
-    int local_num_element = vector->local_num_row * vector->local_num_col;
+    long local_num_element = vector->local_num_row * vector->local_num_col;
 
     // rank 0 read CSV
     if (myid == 0) {
@@ -118,8 +179,14 @@ void GenVector_ReadCSV(denseType * vector, int length, int num_cols, char* rhsFi
 
     }
     //    // Scatter data
-    ierr = MPI_Scatterv((void*) Total_data_buffer, sendCount, sendDispls,
-            MPI_DOUBLE, vector->data, local_num_element,
+
+// int MPI_Scatterv(const void *sendbuf, const int *sendcounts, const int *displs,
+//                  MPI_Datatype sendtype, void *recvbuf, int recvcount,
+//                  MPI_Datatype recvtype,
+//                  int root, MPI_Comm comm)
+
+    ierr = MPI_Scatterv((void*) Total_data_buffer, (int*)sendCount, (int*)sendDispls,
+            MPI_DOUBLE, vector->data, (int)local_num_element,
             MPI_DOUBLE, 0, MPI_COMM_WORLD);
     //
     //    // based on the assumption of equal division of rows among processes 
@@ -139,3 +206,4 @@ void GenVector_ReadCSV(denseType * vector, int length, int num_cols, char* rhsFi
     }
 
 }
+

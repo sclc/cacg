@@ -13,8 +13,8 @@ char * concatStr(char * s1, char * s2) {
 
 //#define parseCSV_DEBUG
 
-void parseCSV(char* filename, double** output, int numRows, int numCols) {
-    int buffersize = 1024;
+void parseCSV(char* filename, double** output, long numRows, long numCols) {
+    long buffersize = 1024;
     char buf[buffersize];
     // make sure we have buf long enough for reading each line
     assert((sizeof (double) + sizeof (char)) * numCols < buffersize);
@@ -23,13 +23,13 @@ void parseCSV(char* filename, double** output, int numRows, int numCols) {
     assert(fstream != 0);
     *output = (double*) calloc(numRows*numCols, sizeof (double));
 
-    int rowCounter = 0;
+    long rowCounter = 0;
     const char * tok;
-    int outputCounter = 0;
+    long outputCounter = 0;
     while (rowCounter < numRows && fgets(buf, sizeof (buf), fstream)) {
         //        printf("%s", buf);
         // parse a line of CSV
-        int rowEleCounter = 0;
+        long rowEleCounter = 0;
         tok = strtok(buf, ",");
         //        printf("%s\n",tok);
         for (; tok&& *tok; tok = strtok(NULL, ",\n")) {
@@ -52,7 +52,7 @@ void parseCSV(char* filename, double** output, int numRows, int numCols) {
 
 void gerschgorin_v1(double * output, csrType_local mat) {
 
-    int ierr;
+    long ierr;
     double local_max = DBL_MIN;
     double local_min = DBL_MAX;
 
@@ -60,9 +60,9 @@ void gerschgorin_v1(double * output, csrType_local mat) {
     double global_recvMax, global_recvMin;
 
     //local max and min search
-    int rowIdx;
-    int startIdx, endIdx;
-    int eleIdx;
+    long rowIdx;
+    long startIdx, endIdx;
+    long eleIdx;
     for (rowIdx = 0; rowIdx < mat.num_rows; rowIdx++) {
         startIdx = mat.row_start[rowIdx];
         endIdx = mat.row_start[rowIdx + 1];
@@ -71,7 +71,9 @@ void gerschgorin_v1(double * output, csrType_local mat) {
 
         for (eleIdx = startIdx; eleIdx < endIdx; eleIdx++) {
             if (rowIdx + mat.start != mat.col_idx[eleIdx]) {
+
                 accumulator += (mat.csrdata[eleIdx] > 0 ? mat.csrdata[eleIdx] : -mat.csrdata[eleIdx]);
+                // printf ("mat.csrdata[1] %lf accumulator %lf\n", mat.csrdata[1],accumulator);
             } else {
                 diagonalEle = mat.csrdata[eleIdx];
             }
@@ -84,10 +86,14 @@ void gerschgorin_v1(double * output, csrType_local mat) {
             local_min = diagonalEle - accumulator;
         }
 
-        //        printf("accumulator: %f, diagobalEle:%f\n", accumulator, diagonalEle);
+               // printf("accumulator: %f, diagobalEle:%f\n", accumulator, diagonalEle);
     }
 
     //mpi_allreduce mpi_max, mpi_min
+    
+// int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count,
+//                   MPI_Datatype datatype, MPI_Op op, MPI_Comm comm)
+
     ierr = MPI_Allreduce((void*) &local_min, (void*) &global_recvMin, 1
             , MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
     ierr = MPI_Allreduce((void*) &local_max, (void*) &global_recvMax, 1
@@ -100,13 +106,13 @@ void gerschgorin_v1(double * output, csrType_local mat) {
 }
 //#define CBCG_chebyshevPolynomialBasisGen_DB_1
 
-void CBCG_chebyshevPolynomialBasisGen(denseType S_mat, csrType_local mat, denseType R, int s
+void CBCG_chebyshevPolynomialBasisGen(denseType S_mat, csrType_local mat, denseType R, long s
         , double s_alpha, double s_beta, int myid, int numprocs) {
-    int ierr;
+    long ierr;
 
     // Chebyshev polynomial chunk size
-    int cpLocalChunkSize = R.local_num_col * R.local_num_row;
-    int S_displ;
+    long cpLocalChunkSize = R.local_num_col * R.local_num_row;
+    long S_displ;
 
     double * AR_global_shape_buffer = (double*) calloc(R.global_num_col * R.global_num_row, sizeof (double));
     //S_mat_dummy which is a transposed S_mat
@@ -130,7 +136,7 @@ void CBCG_chebyshevPolynomialBasisGen(denseType S_mat, csrType_local mat, denseT
 
 
 
-    int sIdx;
+    long sIdx;
     for (sIdx = 0; sIdx < s; sIdx++) {
         if (sIdx == 0) {
             //S(:,1)=r
@@ -168,17 +174,18 @@ void CBCG_chebyshevPolynomialBasisGen(denseType S_mat, csrType_local mat, denseT
     //
     free(S_mat_dummy.data);
     free(spmvBuf.data);
+    free(AR_global_shape_buffer);
 
 }
 //#define BCBCG_chebyshevPolynomialBasisGen_DB_1
 
-void BCBCG_chebyshevPolynomialBasisGen(denseType S_mat, csrType_local mat, denseType R, int s
+void BCBCG_chebyshevPolynomialBasisGen(denseType S_mat, csrType_local mat, denseType R, long s
         , double s_alpha, double s_beta, int myid, int numprocs) {
-    int ierr;
+    long ierr;
 
     // Chebyshev polynomial chunk size
-    int cpLocalChunkSize = R.local_num_col * R.local_num_row;
-    int S_displ;
+    long cpLocalChunkSize = R.local_num_col * R.local_num_row;
+    long S_displ;
 
     double * AR_global_shape_buffer = (double*) calloc(R.global_num_col * R.global_num_row, sizeof (double));
     //S_mat_dummy which is a transposed S_mat
@@ -206,7 +213,7 @@ void BCBCG_chebyshevPolynomialBasisGen(denseType S_mat, csrType_local mat, dense
 
 
 
-    int sIdx;
+    long sIdx;
     for (sIdx = 0; sIdx < s; sIdx++) {
         if (sIdx == 0) {
             //S(:,1)=r
@@ -247,3 +254,20 @@ void BCBCG_chebyshevPolynomialBasisGen(denseType S_mat, csrType_local mat, dense
     free(AR_global_shape_buffer);
 
 }
+
+void Local_Dense_Mat_Generator(denseType * mat, long num_rows, long num_cols,\
+                     double ranMin, double ranMax)
+{
+    srand (time(NULL));
+    double ranRange = ranMax - ranMin;
+    long totalEle = num_rows * num_cols;
+    mat->data = (double*) calloc (totalEle,sizeof(double));
+
+    long idx;
+    for (idx=0; idx<totalEle; idx++)
+    {
+        mat->data[idx] = ranMin + ( (double)rand() / (double)RAND_MAX ) * ranRange;
+    }
+
+}
+

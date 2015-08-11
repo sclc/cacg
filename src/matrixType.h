@@ -11,5 +11,5 @@ void delete_denseType (denseType mat);
 void get_same_shape_denseType (denseType src, denseType *target);
 void set_dense_to_zero (denseType mat);
 
-void gen_dense_mat (denseType *mat, int local_row_num, int local_col_num
-                  , int global_row_num, int global_col_num, int start_row_id);
+void gen_dense_mat (denseType *mat, long local_row_num, long local_col_num
+                  , long global_row_num, long global_col_num, long start_row_id);

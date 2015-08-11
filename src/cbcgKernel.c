@@ -1,4 +1,6 @@
 #include "cbcgKernel.h"
+#define CBCG_MAXITER 400
+#define NUM_LOOP_PER_PRINT 10
 
 //#define cbcg_v1_DB_Ger
 //#define cbcg_v1_DB_R
@@ -9,9 +11,42 @@
 //#define cbcg_v1_DB_AQALPHA
 //#define cbcg_v1_DB_UpdatedX
 //#define cbcg_v1_DB_UpdatedR
+
+// #define TIME_CBCG_PROFILING
+// #define TIME_MEASURE_CBCG_CB_GEN
+// #define TIME_MEASURE_CBCG_IP_COLLECTIVE
+// #define TIME_MEASURE_CBCG_SPMM_COLLECTIVE
+// #define TIME_MEASURE_CBCG_MAT_UPDATE_LOCAL
 // s: s-step
 
-void cbcg_v1(csrType_local mat, denseType B, denseType X, int s, double epsilon, int myid, int numprocs) {
+
+void cbcg_v1(csrType_local mat, denseType B, denseType X, long s, double epsilon, \
+    int myid, int numprocs) 
+{
+
+#ifdef TIME_CBCG_PROFILING
+    int ierr;
+#endif
+
+#ifdef TIME_MEASURE_CBCG_CB_GEN
+        double cb_gen_timer_1, cb_gen_timer_2;
+        double cb_gen_local=0.0, cb_gen_global=0.0;
+#endif
+
+#ifdef TIME_MEASURE_CBCG_IP_COLLECTIVE
+        double ip_collective_timer_1, ip_collective_timer_2;
+        double ip_collective_local=0.0, ip_collective_global=0.0;
+#endif
+
+#ifdef TIME_MEASURE_CBCG_SPMM_COLLECTIVE
+        double spmm_collective_timer_1, spmm_collective_timer_2;
+        double spmm_collective_local=0.0, spmm_collective_global=0.0;
+#endif
+        
+#ifdef TIME_MEASURE_CBCG_MAT_UPDATE_LOCAL
+        double mat_update_local_timer1, mat_update_local_timer2;
+        double mat_update_local=0.0, mat_update_global=0.0;
+#endif
 
     denseType R;
     get_same_shape_denseType(B, &R);
@@ -83,8 +118,8 @@ void cbcg_v1(csrType_local mat, denseType B, denseType X, int s, double epsilon,
     }
     exit(1);
 #endif
-    int maxIters = 1000;
-    int iterCounter;
+    long maxIters = CBCG_MAXITER;
+    long iterCounter;
     for (iterCounter = 0; iterCounter < maxIters; iterCounter++) {
         //To generate S Chebyshev basis, namely, update S with new R
         CBCG_chebyshevPolynomialBasisGen(S_Mat, mat, R, s, s_alpha, s_beta, myid, numprocs);
@@ -174,10 +209,11 @@ void cbcg_v1(csrType_local mat, denseType B, denseType X, int s, double epsilon,
         // R = R - AQalpha
         dense_mat_mat_add_TP(R, AQalpha_Mat, R, 1.0, -1.0, myid, numprocs);
         // check vector norm
-        int n_col = 1;
+        long n_col = 1;
         double R_norm2squre;
         norm2square_dist_denseMat_col_n(R, &R_norm2squre, n_col, myid, numprocs);
-        if (myid == 0) {
+        if (myid == 0 && (iterCounter % NUM_LOOP_PER_PRINT==0 || sqrt(R_norm2squre) < epsilon \
+             || iterCounter == (maxIters-1))) {
             printf("Loop: %d, R[%d]_norm=%30.30f\n", iterCounter, n_col, sqrt(R_norm2squre));
         }
         if (sqrt(R_norm2squre) < epsilon) {

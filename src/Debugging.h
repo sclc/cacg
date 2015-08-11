@@ -15,7 +15,7 @@ extern "C" {
 
     void check_coo_matrix_print(cooType mat, matInfo *info);
     void check_csr_matrix_print(csrType_local mat);
-    void check_csv_array_print(double* array, int rows, int cols, int myid);
+    void check_csv_array_print(double* array, long rows, long cols, int myid);
 
 #ifdef	__cplusplus
 }

@@ -6,20 +6,20 @@
 void LUsolver_v1(denseType * resMat, denseType lhsMat, denseType rhsMat, int myid, int numprocs) {
 
     double * Y_buffer = (double*) calloc(rhsMat.local_num_col * rhsMat.local_num_row, sizeof (double));
-    int rhs_col_num = rhsMat.local_num_col;
+    long rhs_col_num = rhsMat.local_num_col;
 
     // Crout's LU decomposition, Crout's algorithm
     // u(i,i) = 1
-    int idx;
-    int lhs_row_num = lhsMat.local_num_row;
-    int lhs_col_num = lhsMat.local_num_col;
+    long idx;
+    long lhs_row_num = lhsMat.local_num_row;
+    long lhs_col_num = lhsMat.local_num_col;
     double temp_update_u;
     double temp_update_partial;
 
     // actually, here we need lhs_col_num = lhs_row_num
     for (idx = 0; idx < lhs_col_num; idx++) {
         temp_update_u = 1.0 / lhsMat.data[idx * lhs_col_num + idx];
-        int colIdx_u;
+        long colIdx_u;
         colIdx_u = idx + 1;
         // calculate upper triangular element
         // to get L(rowIdx,colIdx)
@@ -27,10 +27,10 @@ void LUsolver_v1(denseType * resMat, denseType lhsMat, denseType rhsMat, int myi
             lhsMat.data[idx * lhs_col_num + colIdx_u] *= temp_update_u;
         }
         // calculate lower triangular element
-        int rowIdx_lu = idx + 1;
+        long rowIdx_lu = idx + 1;
         for (; rowIdx_lu < lhs_row_num; rowIdx_lu++) {
             temp_update_partial = lhsMat.data[rowIdx_lu * lhs_col_num + idx];
-            int colIdx_lu = idx + 1;
+            long colIdx_lu = idx + 1;
             for (; colIdx_lu < lhs_col_num; colIdx_lu++) {
                 lhsMat.data[rowIdx_lu * lhs_col_num + colIdx_lu] = lhsMat.data[rowIdx_lu * lhs_col_num + colIdx_lu]
                         - temp_update_partial
@@ -45,7 +45,7 @@ void LUsolver_v1(denseType * resMat, denseType lhsMat, denseType rhsMat, int myi
 #endif
 
     // forward substitution
-    int fs_i, fs_j, fs_k;
+    long fs_i, fs_j, fs_k;
     double temp_l1, temp_l2;
 
     for (fs_i = 0; fs_i < lhs_row_num; fs_i++) {
@@ -73,7 +73,7 @@ void LUsolver_v1(denseType * resMat, denseType lhsMat, denseType rhsMat, int myi
 #endif
 
     // backward substitution
-    int bs_i, bs_j, bs_k;
+    long bs_i, bs_j, bs_k;
     double temp_bs;
 
     for (bs_j = 0; bs_j < rhs_col_num; bs_j++) {
@@ -111,20 +111,20 @@ void LUsolver_v1_KeeplhsMat(denseType * resMat, denseType lhsMatdb, denseType rh
     get_same_shape_denseType(lhsMatdb, &lhsMatDummy);
     dense_entry_copy(lhsMatdb, lhsMatDummy);
     
-    int rhs_col_num = rhsMat.local_num_col;
+    long rhs_col_num = rhsMat.local_num_col;
 
     // Crout's LU decomposition, Crout's algorithm
     // u(i,i) = 1
-    int idx;
-    int lhs_row_num = lhsMatdb.local_num_row;
-    int lhs_col_num = lhsMatdb.local_num_col;
+    long idx;
+    long lhs_row_num = lhsMatdb.local_num_row;
+    long lhs_col_num = lhsMatdb.local_num_col;
     double temp_update_u;
     double temp_update_partial;
 
     // actually, here we need lhs_col_num = lhs_row_num
     for (idx = 0; idx < lhs_col_num; idx++) {
         temp_update_u = 1.0 / lhsMatDummy.data[idx * lhs_col_num + idx];
-        int colIdx_u;
+        long colIdx_u;
         colIdx_u = idx + 1;
         // calculate upper triangular element
         // to get L(rowIdx,colIdx)
@@ -132,10 +132,10 @@ void LUsolver_v1_KeeplhsMat(denseType * resMat, denseType lhsMatdb, denseType rh
             lhsMatDummy.data[idx * lhs_col_num + colIdx_u] *= temp_update_u;
         }
         // calculate lower triangular element
-        int rowIdx_lu = idx + 1;
+        long rowIdx_lu = idx + 1;
         for (; rowIdx_lu < lhs_row_num; rowIdx_lu++) {
             temp_update_partial = lhsMatDummy.data[rowIdx_lu * lhs_col_num + idx];
-            int colIdx_lu = idx + 1;
+            long colIdx_lu = idx + 1;
             for (; colIdx_lu < lhs_col_num; colIdx_lu++) {
                 lhsMatDummy.data[rowIdx_lu * lhs_col_num + colIdx_lu] = lhsMatDummy.data[rowIdx_lu * lhs_col_num + colIdx_lu]
                         - temp_update_partial
@@ -150,7 +150,7 @@ void LUsolver_v1_KeeplhsMat(denseType * resMat, denseType lhsMatdb, denseType rh
 #endif
 
     // forward substitution
-    int fs_i, fs_j, fs_k;
+    long fs_i, fs_j, fs_k;
     double temp_l1, temp_l2;
 
     for (fs_i = 0; fs_i < lhs_row_num; fs_i++) {
@@ -178,7 +178,7 @@ void LUsolver_v1_KeeplhsMat(denseType * resMat, denseType lhsMatdb, denseType rh
 #endif
 
     // backward substitution
-    int bs_i, bs_j, bs_k;
+    long bs_i, bs_j, bs_k;
     double temp_bs;
 
     for (bs_j = 0; bs_j < rhs_col_num; bs_j++) {

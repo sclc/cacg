@@ -13,9 +13,9 @@ extern "C" {
 #endif
 typedef struct {
 
-	int num_rows;
-	int num_cols;
-	int nnz;
+	long num_rows;
+	long num_cols;
+	long nnz;
 
 } matInfo;
 
@@ -25,36 +25,36 @@ typedef struct
     /* Dimensions, number of nonzeros 
      * (m == n for square, m < n for a local "slice") */
     // local matrix property
-    int num_rows, num_cols, nnz;
+    long num_rows, num_cols, nnz;
                      
     /* Start of the rows owned by each thread */
-    int start;      
+    long start;      
 
     /* Starts of rows owned by local processor
      * row_start[0] == 0 == offset of first nz in row start[MY_THREAD] 
      */
-    int *row_start;
+    long *row_start;
                                           
     /* Column indices and values of matrix elements at local processor */
-    int *col_idx;
+    long *col_idx;
     double *csrdata;
                                           
 } csrType_local;
 
 typedef struct 
 {
-	int * rowIdx;
-	int * colIdx;
+	long * rowIdx;
+	long * colIdx;
 	double * coodata;
 } cooType;
 
 typedef struct
 {
-	int local_num_row;
-	int local_num_col;
-        int global_num_row;
-        int global_num_col;
-        int start_idx;
+	long local_num_row;
+	long local_num_col;
+        long global_num_row;
+        long global_num_col;
+        long start_idx;
         
 	double * data;
 } denseType;

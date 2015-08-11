@@ -7,6 +7,8 @@
 
 //#define dense_mat_mat_add_TP_DEBUG
 
+#define DB_SPMM_CSR_V2
+
 void spmm_csr_serial_v1(csrType_local matL, denseType matR, denseType resMat) {
     // ToDo
 }
@@ -15,37 +17,41 @@ void spmm_csr_serial_v1(csrType_local matL, denseType matR, denseType resMat) {
 //, for I am handling sparse SPD matrix
 
 void spmm_csr_v1(csrType_local csr_mat, denseType dense_mat, denseType *res_mat, double * global_swap_zone, int myid, int numprocs) {
-    int ierr;
-    int idx;
+    long ierr;
+    long idx;
     // gather all data from all processes
     int recv_count[numprocs];
     int displs[numprocs];
 
-    int local_num_row_normal = dense_mat.global_num_row / numprocs;
-    int local_num_col_normal = dense_mat.global_num_col;
-    int normal_num_elements = local_num_row_normal * local_num_col_normal;
+    long local_num_row_normal = dense_mat.global_num_row / numprocs;
+    long local_num_col_normal = dense_mat.global_num_col;
+    long normal_num_elements = local_num_row_normal * local_num_col_normal;
 
     // values allocated by calloc() is initialized to zero
-    double *res_buffer = (double *) calloc(res_mat->local_num_col * res_mat->local_num_row, sizeof (double));
+    double *res_buffer = (double *) calloc(res_mat->local_num_col * res_mat->local_num_row, \
+                          sizeof (double));
 
     for (idx = 0; idx < numprocs; idx++) {
-        recv_count[idx] = normal_num_elements;
-        displs[idx] = idx * normal_num_elements;
+        recv_count[idx] = (int)normal_num_elements;
+        displs[idx] = (int)(idx * normal_num_elements);
 
         if (idx == (numprocs - 1)) {
-            recv_count[idx] = (dense_mat.global_num_row - local_num_row_normal * (numprocs - 1))
-                    * local_num_col_normal;
+            recv_count[idx] = (int)((dense_mat.global_num_row - local_num_row_normal * (numprocs - 1))
+                    * local_num_col_normal);
         }
     }
     //    ierr = MPI_Barrier(MPI_COMM_WORLD);
-    ierr = MPI_Allgatherv((void *) dense_mat.data, dense_mat.local_num_col * dense_mat.local_num_row, MPI_DOUBLE
-            , global_swap_zone, recv_count, displs
-            , MPI_DOUBLE, MPI_COMM_WORLD);
+    // int MPI_Allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+    //                void *recvbuf, const int *recvcounts, const int *displs,
+    //                MPI_Datatype recvtype, MPI_Comm comm)
+    ierr = MPI_Allgatherv((void *) dense_mat.data, (int)dense_mat.local_num_col * dense_mat.local_num_row \
+                       , MPI_DOUBLE, (void*)global_swap_zone, (int*)recv_count, (int*)displs \
+                       , MPI_DOUBLE, MPI_COMM_WORLD);
 
 #ifdef SPMM_COMM_DEBUG
-    int testid = 100;
+    long testid = 100;
     if (myid == testid) {
-        int global_num_elements = dense_mat.global_num_col * dense_mat.global_num_row;
+        long global_num_elements = dense_mat.global_num_col * dense_mat.global_num_row;
         printf("myid=%d, ", myid);
         for (idx = 0; idx < global_num_elements + 2; idx++)
             printf("%f, ", global_swap_zone[idx]);
@@ -54,8 +60,8 @@ void spmm_csr_v1(csrType_local csr_mat, denseType dense_mat, denseType *res_mat,
 #endif
     // spmm using csr format
 #ifdef SPMM_CAL_DEBUG_RES_MAT
-    int res_debug_idx;
-    int res_num_total_ele = res_mat->local_num_row * res_mat->local_num_col;
+    long res_debug_idx;
+    long res_num_total_ele = res_mat->local_num_row * res_mat->local_num_col;
     for (res_debug_idx = 0; res_debug_idx < res_num_total_ele; res_debug_idx++) {
         if (res_mat->data[res_debug_idx] != 0.0) {
             printf("in spmm_csr_v1, %dth res_mat data inappropriate\n", res_debug_idx);
@@ -64,25 +70,25 @@ void spmm_csr_v1(csrType_local csr_mat, denseType dense_mat, denseType *res_mat,
     }
     printf("in spmm_csr_v1, res_mat init value is fine\n");
 #endif
-    int idx_row;
+    long idx_row;
 #ifdef SPMM_CAL_DEBUG_2
     printf("in BLAS3.c, myid=%d,number of row: %d\n", myid, csr_mat.num_rows);
 #endif
     for (idx_row = 0; idx_row < csr_mat.num_rows; idx_row++) {
-        int row_start_idx = csr_mat.row_start[idx_row];
-        int row_end_idx = csr_mat.row_start[idx_row + 1];
+        long row_start_idx = csr_mat.row_start[idx_row];
+        long row_end_idx = csr_mat.row_start[idx_row + 1];
 
-        int idx_data;
+        long idx_data;
         for (idx_data = row_start_idx; idx_data < row_end_idx; idx_data++) {
-            int col_idx = csr_mat.col_idx[idx_data];
+            long col_idx = csr_mat.col_idx[idx_data];
             double csr_data = csr_mat.csrdata[idx_data];
 #ifdef SPMM_CAL_DEBUG_2
             if (myid == 0 && idx_row == 0) {
                 printf("in BLAS3.c, csr_data=%f\n", csr_data);
             }
 #endif
-            int block_size = dense_mat.local_num_col;
-            int block_idx;
+            long block_size = dense_mat.local_num_col;
+            long block_idx;
             for (block_idx = 0; block_idx < block_size; block_idx++) {
 #ifdef SPMM_CAL_DEBUG_2
                 if (myid == 0 && idx_row == 0 && block_idx == 0) {
@@ -113,15 +119,16 @@ void spmm_csr_v1(csrType_local csr_mat, denseType dense_mat, denseType *res_mat,
 #ifdef SPMM_CAL_DEBUG_1
     double * local_norm = local_dense_colum_2norm(*res_mat);
     double * global_norm = (double *) calloc(res_mat->global_num_col, sizeof (double));
-    int temp_idx;
+    long temp_idx;
     printf("in BLAS3.c, myid=%d ", myid);
     for (temp_idx = 0; temp_idx < res_mat->local_num_col; temp_idx++) {
         printf("%f, ", local_norm[temp_idx]);
     }
     printf("local norm ending \n");
 
-
-    ierr = MPI_Reduce((void*) local_norm, (void*) global_norm, res_mat->global_num_col
+// int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
+//                MPI_Op op, int root, MPI_Comm comm)
+    ierr = MPI_Reduce((void*) local_norm, (void*) global_norm, (int)res_mat->global_num_col
             , MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if (myid == 0) {
@@ -137,8 +144,8 @@ void spmm_csr_v1(csrType_local csr_mat, denseType dense_mat, denseType *res_mat,
 #endif
     /////////
 #ifdef SPMM_CAL_DEBUG_2
-    int spmm_cal_debug_2_i = 0;
-    int spmm_cal_debug_2_j = 0;
+    long spmm_cal_debug_2_i = 0;
+    long spmm_cal_debug_2_j = 0;
 
     printf("in BLAS3.c, myid=%d,\t\t", myid);
     printf("%f\n", res_mat->data[spmm_cal_debug_2_i * res_mat->global_num_col + spmm_cal_debug_2_j]);
@@ -146,50 +153,66 @@ void spmm_csr_v1(csrType_local csr_mat, denseType dense_mat, denseType *res_mat,
 
 }
 //
-void spmm_csr_v2(csrType_local csr_mat, denseType dense_mat, denseType *res_mat, int myid, int numprocs) {
-    int ierr;
-    int idx;
+void spmm_csr_v2(csrType_local csr_mat, denseType dense_mat, denseType *res_mat, \
+                 int myid, int numprocs) {
+
+    long ierr;
+    long idx;
     // gather all data from all processes
     int recv_count[numprocs];
     int displs[numprocs];
 
-    int local_num_row_normal = dense_mat.global_num_row / numprocs;
-    int local_num_col_normal = dense_mat.global_num_col;
-    int normal_num_elements = local_num_row_normal * local_num_col_normal;
+    long local_num_row_normal = dense_mat.global_num_row / numprocs;
+    long local_num_col_normal = dense_mat.global_num_col;
+    long normal_num_elements = local_num_row_normal * local_num_col_normal;
 
-    double *recv_buffer = (double*)calloc(dense_mat.global_num_col * dense_mat.global_num_row, sizeof(double));
+    double *recv_buffer = (double*)calloc(dense_mat.global_num_col * dense_mat.global_num_row \
+                                        , sizeof(double));
     // values allocated by calloc() is initialized to zero
-    double *res_buffer = (double *) calloc(res_mat->local_num_col * res_mat->local_num_row, sizeof (double));
+    double *res_buffer = (double *) calloc(res_mat->local_num_col * res_mat->local_num_row \
+                                        , sizeof (double));
 
     for (idx = 0; idx < numprocs; idx++) {
-        recv_count[idx] = normal_num_elements;
-        displs[idx] = idx * normal_num_elements;
+        recv_count[idx] = (int)normal_num_elements;
+        displs[idx] = (int)(idx * normal_num_elements);
+
+#ifdef DB_SPMM_CSR_V2
+        assert ((int)normal_num_elements == normal_num_elements);
+        assert ((int)(idx * normal_num_elements) == (idx * normal_num_elements));
+#endif
 
         if (idx == (numprocs - 1)) {
-            recv_count[idx] = (dense_mat.global_num_row - local_num_row_normal * (numprocs - 1))
-                    * local_num_col_normal;
+            recv_count[idx] = (int)((dense_mat.global_num_row - local_num_row_normal * (numprocs - 1))
+                    * local_num_col_normal);
         }
     }
     //    ierr = MPI_Barrier(MPI_COMM_WORLD);
-    ierr = MPI_Allgatherv((void *) dense_mat.data, dense_mat.local_num_col * dense_mat.local_num_row, MPI_DOUBLE
-            , recv_buffer, recv_count, displs
+
+    // int MPI_Allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+    //                void *recvbuf, const int *recvcounts, const int *displs,
+    //                MPI_Datatype recvtype, MPI_Comm comm)
+    
+
+    ierr = MPI_Allgatherv((void *) dense_mat.data \
+            , (int)(dense_mat.local_num_col * dense_mat.local_num_row), MPI_DOUBLE \
+            , (void*)recv_buffer, recv_count, displs \
             , MPI_DOUBLE, MPI_COMM_WORLD);
 
     // spmm using csr format
-    int idx_row;
+    long idx_row;
 #ifdef SPMM_CAL_DEBUG_2
     printf("in BLAS3.c, myid=%d,number of row: %d\n", myid, csr_mat.num_rows);
 #endif
     for (idx_row = 0; idx_row < csr_mat.num_rows; idx_row++) {
-        int row_start_idx = csr_mat.row_start[idx_row];
-        int row_end_idx = csr_mat.row_start[idx_row + 1];
+        long row_start_idx = csr_mat.row_start[idx_row];
+        long row_end_idx = csr_mat.row_start[idx_row + 1];
 
-        int idx_data;
+        long idx_data;
         for (idx_data = row_start_idx; idx_data < row_end_idx; idx_data++) {
-            int col_idx = csr_mat.col_idx[idx_data];
+            long col_idx = csr_mat.col_idx[idx_data];
             double csr_data = csr_mat.csrdata[idx_data];
-            int block_size = dense_mat.local_num_col;
-            int block_idx;
+            long block_size = dense_mat.local_num_col;
+            long block_idx;
             for (block_idx = 0; block_idx < block_size; block_idx++) {
                 res_buffer[idx_row * res_mat->local_num_col + block_idx] +=
                         csr_data * recv_buffer[col_idx * dense_mat.local_num_col + block_idx];
@@ -209,9 +232,11 @@ void spmm_csr_v2(csrType_local csr_mat, denseType dense_mat, denseType *res_mat,
 // res = alpha*mat1 + beta*mat2, TP, third place
 // note: one each processor, mat1 and mat2 should have the same shape
 
-void dense_mat_mat_add_TP(denseType mat1, denseType mat2, denseType output_mat, double alpha, double beta, int myid, int numprocs) {
-    int num_rows = mat1.local_num_row;
-    int num_cols = mat1.local_num_col;
+void dense_mat_mat_add_TP(denseType mat1, denseType mat2, denseType output_mat, \
+    double alpha, double beta, int myid, int numprocs) {
+    
+    long num_rows = mat1.local_num_row;
+    long num_cols = mat1.local_num_col;
 
 #ifdef dense_mat_mat_add_TP_DEBUG    
     assert(mat1.local_num_row == mat2.local_num_row);
@@ -219,11 +244,11 @@ void dense_mat_mat_add_TP(denseType mat1, denseType mat2, denseType output_mat, 
     assert(mat1.local_num_col == output_mat.local_num_col);
     assert(mat1.local_num_row == output_mat.local_num_row);
 #endif
-    int idx_i;
-    int idx_j;
+    long idx_i;
+    long idx_j;
     for (idx_i = 0; idx_i < num_rows; idx_i++) {
         for (idx_j = 0; idx_j < num_cols; idx_j++) {
-            int mat_idx = idx_i * num_cols + idx_j;
+            long mat_idx = idx_i * num_cols + idx_j;
 #ifdef dense_mat_mat_add_TP_DEBUG
             if (myid == 0 && (mat_idx == 0 || mat_idx == (num_rows * num_cols - 1))) {
                 printf("in dense_mat_mat_add_TP, before calculation, myid=%d, mat1 values: %f; mat2 values: %f; output values: %f\n"
@@ -248,11 +273,11 @@ void dense_MtM(denseType mat1, denseType mat2, denseType * res_mat, int myid, in
 
 void distributedMatTransposeLocalMatMul_v1(denseType *res_mat, denseType dis_mat1, double * local_mat2, int myid, int numprocs) {
 
-    int ierr;
+    long ierr;
 
     //since A is SPD, Pt_A = (A_P)^t
-    int global_mat1_transposed_col_order_row_num = dis_mat1.global_num_col;
-    int global_mat1_transposed_col_order_col_num = dis_mat1.global_num_row;
+    long global_mat1_transposed_col_order_row_num = dis_mat1.global_num_col;
+    long global_mat1_transposed_col_order_col_num = dis_mat1.global_num_row;
 
     double * global_mat1_transposed_col_order = (double *) calloc(dis_mat1.global_num_col * dis_mat1.global_num_row, sizeof (double));
 
@@ -262,21 +287,21 @@ void distributedMatTransposeLocalMatMul_v1(denseType *res_mat, denseType dis_mat
     int recv_count[numprocs];
     int displs[numprocs];
 
-    int local_num_row_normal = dis_mat1.global_num_row / numprocs;
-    int local_num_col_normal = dis_mat1.global_num_col;
-    int normal_num_elements = local_num_row_normal * local_num_col_normal;
+    long local_num_row_normal = dis_mat1.global_num_row / numprocs;
+    long local_num_col_normal = dis_mat1.global_num_col;
+    long normal_num_elements = local_num_row_normal * local_num_col_normal;
 
-    int idx;
+    long idx;
 #ifdef distributedMatTransposeLocalMatMul_DEBUG
-    int global_ele_counter = 0;
+    long global_ele_counter = 0;
 #endif
     for (idx = 0; idx < numprocs; idx++) {
-        recv_count[idx] = normal_num_elements;
-        displs[idx] = idx * normal_num_elements;
+        recv_count[idx] = (int)normal_num_elements;
+        displs[idx] = (int)(idx * normal_num_elements);
 
         if (idx == (numprocs - 1)) {
-            recv_count[idx] = (dis_mat1.global_num_row - local_num_row_normal * (numprocs - 1))
-                    * local_num_col_normal;
+            recv_count[idx] = (int)((dis_mat1.global_num_row - local_num_row_normal * (numprocs - 1))
+                    * local_num_col_normal);
         }
 #ifdef distributedMatTransposeLocalMatMul_DEBUG
         global_ele_counter += recv_count[idx];
@@ -286,13 +311,17 @@ void distributedMatTransposeLocalMatMul_v1(denseType *res_mat, denseType dis_mat
     assert(global_ele_counter == (dis_mat1.global_num_col * dis_mat1.global_num_row));
 #endif
 
+// int MPI_Allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+//                    void *recvbuf, const int *recvcounts, const int *displs,
+//                    MPI_Datatype recvtype, MPI_Comm comm)
 
-    ierr = MPI_Allgatherv((void *) dis_mat1.data, dis_mat1.local_num_col * dis_mat1.local_num_row, MPI_DOUBLE
-            , global_mat1_transposed_col_order, recv_count, displs
+    ierr = MPI_Allgatherv((void *) dis_mat1.data, (int)(dis_mat1.local_num_col * dis_mat1.local_num_row), MPI_DOUBLE \
+            , (void *) global_mat1_transposed_col_order, (int*)recv_count, (int)displs \
             , MPI_DOUBLE, MPI_COMM_WORLD);
+
 #ifdef distributedMatTransposeLocalMatMul_DEBUG
-    int debug_row_idx = 0;
-    int debug_col_idx = 47;
+    long debug_row_idx = 0;
+    long debug_col_idx = 47;
     //        printf ("MPI_Allgatherv test; row:%d, col:%d, value:%f\n", debug_row_idx, debug_col_idx, 
     //                global_mat1_transposed_col_order[debug_col_idx * global_mat1_transposed_col_order_row_num + debug_row_idx]);
     //        printf ("aquired ele: %d\n",debug_col_idx * global_mat1_transposed_col_order_row_num + debug_row_idx);
@@ -301,7 +330,7 @@ void distributedMatTransposeLocalMatMul_v1(denseType *res_mat, denseType dis_mat
     printf("buffer value test; row:%d, col:%d, val:%f\n", debug_row_idx,
             debug_col_idx, local_mat2[debug_row_idx * res_mat->local_num_col + debug_col_idx]);
 #endif
-    int rowIdx, colIdx, kIdx;
+    long rowIdx, colIdx, kIdx;
     for (kIdx = 0; kIdx < global_mat1_transposed_col_order_col_num; kIdx++) {
         for (rowIdx = 0; rowIdx < res_mat->local_num_row; rowIdx++) {
             double temp = global_mat1_transposed_col_order[kIdx * global_mat1_transposed_col_order_row_num + rowIdx];
@@ -325,13 +354,13 @@ void distributedMatTransposeLocalMatMul_v1(denseType *res_mat, denseType dis_mat
 // matL and matR should be of the same shape
 void distributedMatLTransposeMatRMul(denseType *resMat, denseType matL, denseType matR, int myid, int numprocs) {
 
-    int ierr;
+    long ierr;
     double * res_local_buffer = (double *) calloc(resMat->local_num_col * resMat->local_num_row, sizeof (double));
 
-    int rowIdx, colIdx, kIdx;
-    int mat_row_num = matL.local_num_col;
-    int mat_col_num = matL.local_num_row;
-    int res_square_col_row_num = mat_row_num;
+    long rowIdx, colIdx, kIdx;
+    long mat_row_num = matL.local_num_col;
+    long mat_col_num = matL.local_num_row;
+    long res_square_col_row_num = mat_row_num;
 
     for (kIdx = 0; kIdx < mat_col_num; kIdx++) {
         for (rowIdx = 0; rowIdx < res_square_col_row_num; rowIdx++) {
@@ -344,8 +373,8 @@ void distributedMatLTransposeMatRMul(denseType *resMat, denseType matL, denseTyp
     }
 
     // to sum partial results using MPI_Allreduce
-    int send_count = resMat->local_num_col * resMat->local_num_row;
-    ierr = MPI_Allreduce((void*) res_local_buffer, (void*) (resMat->data), send_count
+    long send_count = resMat->local_num_col * resMat->local_num_row;
+    ierr = MPI_Allreduce((void*) res_local_buffer, (void*) (resMat->data), (int)send_count
             , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
     free(res_local_buffer);
@@ -356,14 +385,14 @@ void distributedMatLTransposeMatRMul(denseType *resMat, denseType matL, denseTyp
 // however, the #row of matL and #row of matR must be identical
 void distributedMatLTransposeMatRMul_updated(denseType *resMat, denseType matL, denseType matR, int myid, int numprocs) {
 
-    int ierr;
+    long ierr;
     double * res_local_buffer = (double *) calloc(resMat->local_num_col * resMat->local_num_row, sizeof (double));
 
-    int rowIdx, colIdx, kIdx;
-    int matTrans_row_num = matL.local_num_col;
-    int common_mat_col_num = matL.local_num_row;
-    int res_row_num = matL.global_num_col;
-    int res_col_num = matR.global_num_col;
+    long rowIdx, colIdx, kIdx;
+    long matTrans_row_num = matL.local_num_col;
+    long common_mat_col_num = matL.local_num_row;
+    long res_row_num = matL.global_num_col;
+    long res_col_num = matR.global_num_col;
 
     for (kIdx = 0; kIdx < common_mat_col_num; kIdx++) {
         for (rowIdx = 0; rowIdx < res_row_num; rowIdx++) {
@@ -376,8 +405,8 @@ void distributedMatLTransposeMatRMul_updated(denseType *resMat, denseType matL, 
     }
 
     // to sum partial results using MPI_Allreduce
-    int send_count = resMat->local_num_col * resMat->local_num_row;
-    ierr = MPI_Allreduce((void*) res_local_buffer, (void*) (resMat->data), send_count
+    long send_count = resMat->local_num_col * resMat->local_num_row;
+    ierr = MPI_Allreduce((void*) res_local_buffer, (void*) (resMat->data), (int)send_count
             , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
     free(res_local_buffer);
@@ -386,17 +415,17 @@ void distributedMatLTransposeMatRMul_updated(denseType *resMat, denseType matL, 
 
 void MatTranposeMatMul(denseType *resMat, denseType mat, int myid, int numprocs) {
 
-    int ierr;
+    long ierr;
     double * res_local_buffer = (double *) calloc(resMat->local_num_col * resMat->local_num_row, sizeof (double));
 
     if (resMat->data == 0) {
         resMat->data = (double*) calloc(resMat->local_num_col * resMat->local_num_row, sizeof (double));
     }
 
-    int rowIdx, colIdx, kIdx;
-    int mat_row_num = mat.local_num_col;
-    int mat_col_num = mat.local_num_row;
-    int res_square_col_row_num = mat_row_num;
+    long rowIdx, colIdx, kIdx;
+    long mat_row_num = mat.local_num_col;
+    long mat_col_num = mat.local_num_row;
+    long res_square_col_row_num = mat_row_num;
 
     for (kIdx = 0; kIdx < mat_col_num; kIdx++) {
         for (rowIdx = 0; rowIdx < res_square_col_row_num; rowIdx++) {
@@ -409,8 +438,8 @@ void MatTranposeMatMul(denseType *resMat, denseType mat, int myid, int numprocs)
     }
 
     // to sum partial results using MPI_Allreduce
-    int send_count = resMat->local_num_col * resMat->local_num_row;
-    ierr = MPI_Allreduce((void*) res_local_buffer, (void*) (resMat->data), send_count
+    long send_count = resMat->local_num_col * resMat->local_num_row;
+    ierr = MPI_Allreduce((void*) res_local_buffer, (void*) (resMat->data), (int)send_count
             , MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
     free(res_local_buffer);
@@ -420,9 +449,9 @@ void MatTranposeMatMul(denseType *resMat, denseType mat, int myid, int numprocs)
 
 void dense_distributedMatL_localMatR_Mul_v1(denseType * res_mat, denseType matDistL, denseType matLocalR, int myid, int numprocs) {
 
-    int row_num = res_mat->local_num_row;
-    int col_num = res_mat->local_num_col;
-    int k_num = matDistL.local_num_col;
+    long row_num = res_mat->local_num_row;
+    long col_num = res_mat->local_num_col;
+    long k_num = matDistL.local_num_col;
 
     double *res_buf = (double*) calloc(row_num*col_num, sizeof (double));
 #ifdef dense_distributedMatL_localMatR_Mul_v1_ASSERTION
@@ -431,9 +460,9 @@ void dense_distributedMatL_localMatR_Mul_v1(denseType * res_mat, denseType matDi
     assert(matDistL.local_num_col == matLocalR.local_num_row);
 
 #endif
-    int rowIdx;
-    int colIdx;
-    int kIdx;
+    long rowIdx;
+    long colIdx;
+    long kIdx;
     double temp;
     for (rowIdx = 0; rowIdx < row_num; rowIdx++) {
         for (kIdx = 0; kIdx < k_num; kIdx++) {
@@ -452,18 +481,18 @@ void dense_distributedMatL_localMatR_Mul_v1(denseType * res_mat, denseType matDi
 }
 #define dense_mat_mat_add_TP_targetDisp_ASSERTION
 
-void dense_mat_mat_add_TP_targetDisp(denseType mat1, denseType mat2, denseType output_mat, int output_mat_disp
+void dense_mat_mat_add_TP_targetDisp(denseType mat1, denseType mat2, denseType output_mat, long output_mat_disp
         , double alpha, double beta, int myid, int numprocs) {
 
-    int num_rows = mat1.local_num_row;
-    int num_cols = mat1.local_num_col;
+    long num_rows = mat1.local_num_row;
+    long num_cols = mat1.local_num_col;
 
 
-    int idx_i;
-    int idx_j;
+    long idx_i;
+    long idx_j;
     for (idx_i = 0; idx_i < num_rows; idx_i++) {
         for (idx_j = 0; idx_j < num_cols; idx_j++) {
-            int mat_idx = idx_i * num_cols + idx_j;
+            long mat_idx = idx_i * num_cols + idx_j;
 #ifdef dense_mat_mat_add_TP_targetDisp_ASSERTION
             assert((output_mat_disp + mat_idx)< (output_mat.local_num_col * output_mat.local_num_row));
 #endif
@@ -475,18 +504,18 @@ void dense_mat_mat_add_TP_targetDisp(denseType mat1, denseType mat2, denseType o
 
 // requirement: the changing elements in dataSrc should be allocated consecutively
 // actually, this is a SpMV calculation
-void spmm_csr_info_data_sep_CBCG(csrType_local csr_mat, denseType dense_mat_info, double * dataSrc, int dataDisp
+void spmm_csr_info_data_sep_CBCG(csrType_local csr_mat, denseType dense_mat_info, double * dataSrc, long dataDisp
         , denseType *res_mat, int myid, int numprocs) {
 
-    int ierr;
-    int idx;
+    long ierr;
+    long idx;
     // gather all data from all processes
     int recv_count[numprocs];
     int displs[numprocs];
 
-    int local_num_row_normal = dense_mat_info.global_num_row / numprocs;
-    int local_num_col_normal = 1;
-    int normal_num_elements = local_num_row_normal * local_num_col_normal;
+    long local_num_row_normal = dense_mat_info.global_num_row / numprocs;
+    long local_num_col_normal = 1;
+    long normal_num_elements = local_num_row_normal * local_num_col_normal;
 
     // recvBuf
     double * recvBuf = (double*)calloc( dense_mat_info.global_num_col * dense_mat_info.global_num_row, sizeof(double));
@@ -494,29 +523,32 @@ void spmm_csr_info_data_sep_CBCG(csrType_local csr_mat, denseType dense_mat_info
     double *res_buffer = (double *) calloc(res_mat->local_num_col * res_mat->local_num_row, sizeof (double));
 
     for (idx = 0; idx < numprocs; idx++) {
-        recv_count[idx] = normal_num_elements;
-        displs[idx] = idx * normal_num_elements;
+        recv_count[idx] = (int)normal_num_elements;
+        displs[idx] = (int)(idx * normal_num_elements);
 
         if (idx == (numprocs - 1)) {
-            recv_count[idx] = (dense_mat_info.global_num_row - local_num_row_normal * (numprocs - 1))
-                    * local_num_col_normal;
+            recv_count[idx] = (int)((dense_mat_info.global_num_row - local_num_row_normal * (numprocs - 1))
+                    * local_num_col_normal);
         }
     }
- 
-    ierr = MPI_Allgatherv((void *) (dataSrc+dataDisp), dense_mat_info.local_num_col * dense_mat_info.local_num_row, MPI_DOUBLE
-            , recvBuf, recv_count, displs
+
+    // int MPI_Allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+    //                void *recvbuf, const int *recvcounts, const int *displs,
+    //                MPI_Datatype recvtype, MPI_Comm comm) 
+    ierr = MPI_Allgatherv((void *) (dataSrc+dataDisp), (int)(dense_mat_info.local_num_col * dense_mat_info.local_num_row), MPI_DOUBLE \
+            , (void *)recvBuf, (int *)recv_count, (int*)displs \
             , MPI_DOUBLE, MPI_COMM_WORLD);
 
 
     // spmv using csr format
-    int idx_row;
+    long idx_row;
     for (idx_row = 0; idx_row < csr_mat.num_rows; idx_row++) {
-        int row_start_idx = csr_mat.row_start[idx_row];
-        int row_end_idx = csr_mat.row_start[idx_row + 1];
+        long row_start_idx = csr_mat.row_start[idx_row];
+        long row_end_idx = csr_mat.row_start[idx_row + 1];
 
-        int idx_data;
+        long idx_data;
         for (idx_data = row_start_idx; idx_data < row_end_idx; idx_data++) {
-            int col_idx = csr_mat.col_idx[idx_data];
+            long col_idx = csr_mat.col_idx[idx_data];
             double csr_data = csr_mat.csrdata[idx_data];
 
             res_buffer[idx_row] += csr_data * recvBuf[col_idx];
@@ -532,18 +564,18 @@ void spmm_csr_info_data_sep_CBCG(csrType_local csr_mat, denseType dense_mat_info
 }
 
 //
-void spmm_csr_info_data_sep_BCBCG(csrType_local csr_mat, denseType dense_mat_info, double * dataSrc, int dataDisp
+void spmm_csr_info_data_sep_BCBCG(csrType_local csr_mat, denseType dense_mat_info, double * dataSrc, long dataDisp
         , denseType *res_mat, int myid, int numprocs) {
 
-    int ierr;
-    int idx;
+    long ierr;
+    long idx;
     // gather all data from all processes
     int recv_count[numprocs];
     int displs[numprocs];
 
-    int local_num_row_normal = dense_mat_info.global_num_row / numprocs;
-    int local_num_col_normal = dense_mat_info.local_num_col;
-    int normal_num_elements = local_num_row_normal * local_num_col_normal;
+    long local_num_row_normal = dense_mat_info.global_num_row / numprocs;
+    long local_num_col_normal = dense_mat_info.local_num_col;
+    long normal_num_elements = local_num_row_normal * local_num_col_normal;
 
     // recvBuf
     double * recvBuf = (double*)calloc( dense_mat_info.global_num_col * dense_mat_info.global_num_row, sizeof(double));
@@ -551,32 +583,34 @@ void spmm_csr_info_data_sep_BCBCG(csrType_local csr_mat, denseType dense_mat_inf
     double *res_buffer = (double *) calloc(res_mat->local_num_col * res_mat->local_num_row, sizeof (double));
 
     for (idx = 0; idx < numprocs; idx++) {
-        recv_count[idx] = normal_num_elements;
-        displs[idx] = idx * normal_num_elements;
+        recv_count[idx] = (int)normal_num_elements;
+        displs[idx] = (int)(idx * normal_num_elements);
 
         if (idx == (numprocs - 1)) {
-            recv_count[idx] = (dense_mat_info.global_num_row - local_num_row_normal * (numprocs - 1))
-                    * local_num_col_normal;
+            recv_count[idx] = (int)((dense_mat_info.global_num_row - local_num_row_normal * (numprocs - 1))
+                    * local_num_col_normal);
         }
     }
- 
-    ierr = MPI_Allgatherv((void *) (dataSrc+dataDisp), dense_mat_info.local_num_col * dense_mat_info.local_num_row, MPI_DOUBLE
-            , recvBuf, recv_count, displs
+ // int MPI_Allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+ //                   void *recvbuf, const int *recvcounts, const int *displs,
+ //                   MPI_Datatype recvtype, MPI_Comm comm)
+    ierr = MPI_Allgatherv((void *) (dataSrc+dataDisp), (int)(dense_mat_info.local_num_col * dense_mat_info.local_num_row), MPI_DOUBLE \
+            , (int *)recvBuf, (int*)recv_count, (int*)displs \
             , MPI_DOUBLE, MPI_COMM_WORLD);
 
 
     // spmv using csr format
-    int idx_row;
+    long idx_row;
     for (idx_row = 0; idx_row < csr_mat.num_rows; idx_row++) {
-        int row_start_idx = csr_mat.row_start[idx_row];
-        int row_end_idx = csr_mat.row_start[idx_row + 1];
+        long row_start_idx = csr_mat.row_start[idx_row];
+        long row_end_idx = csr_mat.row_start[idx_row + 1];
 
-        int idx_data;
+        long idx_data;
         for (idx_data = row_start_idx; idx_data < row_end_idx; idx_data++) {
-            int col_idx = csr_mat.col_idx[idx_data];
+            long col_idx = csr_mat.col_idx[idx_data];
             double csr_data = csr_mat.csrdata[idx_data];
-            int block_size = dense_mat_info.global_num_col;
-            int block_idx;
+            long block_size = dense_mat_info.global_num_col;
+            long block_idx;
             for (block_idx = 0; block_idx < block_size; block_idx++) {
                 res_buffer[idx_row * res_mat->local_num_col + block_idx] +=
                         csr_data * recvBuf[col_idx * dense_mat_info.global_num_col + block_idx];
@@ -593,15 +627,15 @@ void spmm_csr_info_data_sep_BCBCG(csrType_local csr_mat, denseType dense_mat_inf
 
 }
 
-void dense_array_mat_mat_mat_add_TP_disp(double* mat1Data, int mat1Disp
-                                       , double* mat2Data, int mat2Disp
-                                       , double* mat3Data, int mat3Disp
-                                       , double* output_mat, int output_mat_disp
-                                       , int length
+void dense_array_mat_mat_mat_add_TP_disp(double* mat1Data, long mat1Disp
+                                       , double* mat2Data, long mat2Disp
+                                       , double* mat3Data, long mat3Disp
+                                       , double* output_mat, long output_mat_disp
+                                       , long length
                                        , double alpha, double beta, double gamma
-                                       ,int myid, int numprocs){
+                                       , int myid, int numprocs){
     
-    int idx;
+    long idx;
     
     for (idx=0; idx<length;idx++){
         output_mat[output_mat_disp+idx] = alpha * mat1Data[mat1Disp+idx] 
