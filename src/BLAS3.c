@@ -316,7 +316,7 @@ void distributedMatTransposeLocalMatMul_v1(denseType *res_mat, denseType dis_mat
 //                    MPI_Datatype recvtype, MPI_Comm comm)
 
     ierr = MPI_Allgatherv((void *) dis_mat1.data, (int)(dis_mat1.local_num_col * dis_mat1.local_num_row), MPI_DOUBLE \
-            , (void *) global_mat1_transposed_col_order, (int*)recv_count, (int)displs \
+            , (void *) global_mat1_transposed_col_order, (int*)recv_count, (int *)displs \
             , MPI_DOUBLE, MPI_COMM_WORLD);
 
 #ifdef distributedMatTransposeLocalMatMul_DEBUG
@@ -595,7 +595,7 @@ void spmm_csr_info_data_sep_BCBCG(csrType_local csr_mat, denseType dense_mat_inf
  //                   void *recvbuf, const int *recvcounts, const int *displs,
  //                   MPI_Datatype recvtype, MPI_Comm comm)
     ierr = MPI_Allgatherv((void *) (dataSrc+dataDisp), (int)(dense_mat_info.local_num_col * dense_mat_info.local_num_row), MPI_DOUBLE \
-            , (int *)recvBuf, (int*)recv_count, (int*)displs \
+            , (void *)recvBuf, (int*)recv_count, (int*)displs \
             , MPI_DOUBLE, MPI_COMM_WORLD);
 
 
