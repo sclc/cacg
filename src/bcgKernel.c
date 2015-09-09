@@ -307,6 +307,9 @@ void bcg_QR(csrType_local mat, denseType B, denseType X, double epsilon, int myi
 
     long max_iter = BCG_MAXITER;
     long bcg_v1_loop_idx;
+
+    // start main loop
+    //
     for (bcg_v1_loop_idx = 0; bcg_v1_loop_idx < max_iter; bcg_v1_loop_idx++) {
         // A_P = A*P
         spmm_csr_v1(mat, P, &A_P, B_global_shape_swap_zone, myid, numprocs);
