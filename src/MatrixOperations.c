@@ -1,6 +1,6 @@
 #include "MatrixOperations.h"
 
-#define ASSERTION_DEBUG
+// #define ASSERTION_DEBUG
 
 double* local_dense_colum_2norm(denseType mat) {
     double * norm_array = (double *) calloc(mat.local_num_col, sizeof (double));
