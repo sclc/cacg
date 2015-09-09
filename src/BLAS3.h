@@ -9,11 +9,22 @@ void spmm_csr_serial_v1 (csrType_local matL, denseType matRi, denseType resMat);
 
 void spmm_csr_v1 (csrType_local csr_mat, denseType dense_mat, denseType *res_mat, double * global_swap_zone, int myid, int numprocs);
 void spmm_csr_v2 (csrType_local csr_mat, denseType dense_mat, denseType *res_mat, int myid, int numprocs);
+void spmm_csr_v2_profiling (csrType_local csr_mat, denseType dense_mat, denseType *res_mat, int myid, int numprocs, \
+	                        double *time_comm, double *time_computation);
+
+void spmv_csr_v3(csrType_local smat, denseType dmat, denseType resMat, \
+                 long *sendIdxBuf, int *bufSendingCount, int *bufSendingDispls, \
+                 double *sendVecDataBuf,int *remoteVecCount, int* remoteVecPtr,\
+                 double *remoteVecDataBuf, int sendCount, int recvCount,int myid, int numprocs);
+
+int prepareRemoteVec_spmv(csrType_local csr_mat, int myid, int numprocs, \
+            int *remoteVecCount, int *remoteVecPtr, long *remoteVecIndex);
 
 //double * global_swap_zone is deprecated
 
 void spmm_csr_info_data_sep_CBCG (csrType_local csr_mat, denseType dense_mat_info, double * dataSrc, long dataDisp
         , denseType *res_mat, int myid, int numprocs);
+
 void spmm_csr_info_data_sep_BCBCG (csrType_local csr_mat, denseType dense_mat_info, double * dataSrc, long dataDisp
         , denseType *res_mat, int myid, int numprocs);
 

@@ -52,9 +52,10 @@ typedef struct
 {
 	long local_num_row;
 	long local_num_col;
-        long global_num_row;
-        long global_num_col;
-        long start_idx;
+
+    long global_num_row;
+    long global_num_col;
+    long start_idx;
         
 	double * data;
 } denseType;

@@ -41,3 +41,46 @@ void check_csv_array_print(double* array, long rows, long cols, int myid){
     }
     printf("\ncheck_csv_array_print printing done\n");
 }
+
+// for row-major dense matrix
+void check_small_dense_mat (denseType mat , int myid, int numprocs)
+{
+    int rowIdx,colIdx;
+    int ierr;
+
+    ierr = MPI_Barrier(MPI_COMM_WORLD);
+    for (rowIdx = 0; rowIdx< mat.local_num_row; rowIdx++)
+    {
+        printf ("myid:%d, row:%ld ",myid, rowIdx);
+        for (colIdx = 0;colIdx < mat.local_num_col; colIdx++)
+        {
+            printf ("%lf\t", mat.data[rowIdx * mat.local_num_col + colIdx]);
+        }
+        printf ("\n");        
+    }
+
+    ierr = MPI_Barrier(MPI_COMM_WORLD);
+}
+
+void check_equality_dense (denseType mat1, denseType mat2 , int myid, int numprocs)
+{
+    int ierr;
+    long idx;
+    long mat1Length = mat1.local_num_col * mat1.local_num_row;
+    long mat2Length = mat2.local_num_col * mat2.local_num_row;
+
+    assert (mat1Length == mat2Length);
+
+    for (idx = 0; idx < mat1Length; idx++)
+    {
+        if (mat1.data[idx] != mat2.data[idx])
+        {
+            printf ("myid:%d, idx:%ld, different, %lf, %lf\n", \
+                     myid, idx, mat1.data[idx], mat2.data[idx]);
+        }
+    }
+    ierr = MPI_Barrier(MPI_COMM_WORLD);
+    printf ("check_equality_dense done, myid:%d \n",myid);
+
+}
+

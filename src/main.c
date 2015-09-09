@@ -5,7 +5,6 @@
 
 #include "DataTypes.h"
 #include "common.h"
-#include "RHSgen.h"
 #include "bcgKernel.h"
 #include "cbcgKernel.h"
 #include "bcbcgKernel.h"
@@ -16,7 +15,9 @@
 
 //#define KSMs_DEBUG 
 // #define CAL_GERSCHGORIN
-#define CAL_LS
+// #define CAL_LS
+// #define PROF_SPMM_v1
+#define PROF_SPMM_v2
 
 int main(int argc, char* argv[]) {
 
@@ -31,8 +32,6 @@ int main(int argc, char* argv[]) {
     char * str_sVal;
 
     double epsilon = 1e-5;
-
-    double t1, t2, t_past_local, t_past_global;
 
     if (argc < 7) {
         printf("Argument setting is wrong.\n");
@@ -82,7 +81,7 @@ int main(int argc, char* argv[]) {
    
 
     // generate RHS B
-//        GenVectorOne(mat_info.num_rows, &B, set_num_cols,myid, numprocs);
+       // GenVectorOne(mat_info.num_rows, &B, set_num_cols,myid, numprocs);
     GenVector_ReadCSV(&B, mat_info.num_rows, set_num_cols, rhs_filename, myid, numprocs);
 #ifdef KSMs_DEBUG
     if (myid == numprocs - 1) {
@@ -108,6 +107,7 @@ int main(int argc, char* argv[]) {
 #endif
     
 #ifdef CAL_LS
+    double t1, t2, t_past_local, t_past_global;
     switch (solverIdx) {
         case 0: //BCG
             if (myid == 0) {
@@ -166,6 +166,48 @@ int main(int argc, char* argv[]) {
             break;
     }
 #endif
+
+#ifdef PROF_SPMM_v1
+    double time_comm, time_computation, time_comm_sum=0.0, time_computation_sum=0.0;
+    int loops = 100, loopIdx;
+
+    ierr = MPI_Barrier(MPI_COMM_WORLD);
+    if (myid==0)
+    {
+        printf ("start testing spmm_csr_v2, %d loops\n", loops);
+    }
+    
+    for (loopIdx=0 ;loopIdx<loops; loopIdx++)
+    {
+        spmm_csr_v2_profiling(local_Mat, X, &B, myid, numprocs, &time_comm, &time_computation);
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+
+        time_comm_sum += time_comm;
+        time_computation_sum += time_computation;
+        
+        if (myid==0)
+        {
+            printf ("loop %d, time_comm_sum = %lf, time_computation_sum = %lf\n",\
+                     loopIdx, time_comm_sum, time_computation_sum);
+        }
+        
+    }
+    ierr = MPI_Barrier(MPI_COMM_WORLD);
+
+    if (myid==0)
+    {
+        printf ("average, time_comm_sum = %lf, time_computation_sum = %lf\n",\
+                time_comm_sum/(double)loops, time_computation_sum/(double)loops);
+    }
+    
+#endif
+
+#ifdef PROF_SPMM_v2
+    
+    cbcg_v2(local_Mat, B, X, sVal, epsilon, myid, numprocs);
+
+#endif
+
     //Garbage collection
     delete_denseType(B);
     delete_denseType(X);

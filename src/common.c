@@ -1,8 +1,8 @@
 #include "common.h"
 
-#ifndef ASSERTION_DEBUG
-#define ASSERTION_DEBUG
-#endif
+// #ifndef ASSERTION_DEBUG
+// #define ASSERTION_DEBUG
+// #endif
 
 char * concatStr(char * s1, char * s2) {
     char *resultStr = malloc(strlen(s1) + strlen(s2) + 1);
@@ -270,4 +270,5 @@ void Local_Dense_Mat_Generator(denseType * mat, long num_rows, long num_cols,\
     }
 
 }
+
 

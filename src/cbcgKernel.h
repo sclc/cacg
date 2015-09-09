@@ -20,6 +20,8 @@ extern "C" {
     
 void cbcg_v1 (csrType_local mat, denseType B, denseType X, long s, double epsilon, int myid, int numprocs);
 
+// version2, using spmv which only transfers nessary elements to processes
+void cbcg_v2 (csrType_local mat, denseType B, denseType X, long s, double epsilon, int myid, int numprocs);
 
 #ifdef	__cplusplus
 }
