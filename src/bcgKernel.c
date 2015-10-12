@@ -1,6 +1,6 @@
 #include "bcgKernel.h"
-#define BCG_MAXITER 3200
-#define NUM_LOOP_PER_PRINT 10
+#define BCG_MAXITER 1000
+#define BCG_NUM_LOOP_PER_PRINT 10
 
 //#define BCG_V1_DEBUG
 //#define BCG_V1_DEBUG_1
@@ -14,7 +14,33 @@
 //#define BCG_V1_DEBUG_P_NEW
 //#define BCG_V1_DEBUG_AP
 
-void bcg_v1(csrType_local mat, denseType B, denseType X, double epsilon, int myid, int numprocs) {
+#define TIME_MEASURE_BCG_SPMM
+#define TIME_MEASURE_BCG_IP
+#define TIME_MEASURE_BCG_MAT_UPDATE
+#define TIME_MEASURE_BCG_MAT_INV
+
+void bcg_v1(csrType_local mat, denseType B, denseType X, double epsilon, int myid, int numprocs) 
+{
+#ifdef TIME_MEASURE_BCG_SPMM
+        double bcg_spmm_timer_1,   bcg_spmm_timer_2;
+        double bcg_spmm_local=0.0, bcg_spmm_global=0.0;
+#endif
+
+#ifdef TIME_MEASURE_BCG_IP
+        double bcg_ip_timer_1,   bcg_ip_timer_2;
+        double bcg_ip_local=0.0, bcg_ip_global=0.0;
+#endif
+
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        double bcg_mat_update_timer_1,   bcg_mat_update_timer_2;
+        double bcg_mat_update_local=0.0, bcg_mat_update_global=0.0;
+#endif      
+
+#ifdef TIME_MEASURE_BCG_MAT_INV
+        double bcg_mat_inv_timer_1,   bcg_mat_inv_timer_2;
+        double bcg_mat_inv_local=0.0, bcg_mat_inv_global=0.0;
+#endif  
+
     long ierr;
     denseType R;
     get_same_shape_denseType(B, &R);
@@ -151,11 +177,26 @@ void bcg_v1(csrType_local mat, denseType B, denseType X, double epsilon, int myi
     // R0**t * R0
     MatTranposeMatMul(&Rt_R, R, myid, numprocs);
 
+// loop starts from here
     long max_iter = BCG_MAXITER;
     long bcg_v1_loop_idx;
-    for (bcg_v1_loop_idx = 0; bcg_v1_loop_idx < max_iter; bcg_v1_loop_idx++) {
+
+    for (bcg_v1_loop_idx = 0; bcg_v1_loop_idx < max_iter; bcg_v1_loop_idx++) 
+    {
+
         // A_P = A*P
+#ifdef TIME_MEASURE_BCG_SPMM
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_spmm_timer_1 = MPI_Wtime();
+#endif
         spmm_csr_v1(mat, P, &A_P, B_global_shape_swap_zone, myid, numprocs);
+
+#ifdef TIME_MEASURE_BCG_SPMM
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_spmm_timer_2 = MPI_Wtime();
+        bcg_spmm_local += bcg_spmm_timer_2 - bcg_spmm_timer_1;
+#endif
+
 #ifdef BCG_V1_DEBUG_AP
         if (myid == 0 && bcg_v1_loop_idx == 1) {
             local_dense_mat_print(A_P, myid);
@@ -164,59 +205,209 @@ void bcg_v1(csrType_local mat, denseType B, denseType X, double epsilon, int myi
         // to calculate PtAP, B_global_shape_swap_zone need to be reused.
         // so the later call should be called immediately after A_P calculation
         // PtAP
-        // distributedMatTransposeLocalMatMul_v1(&Pt_A_P, A_P, B_global_shape_swap_zone, myid, numprocs);        
+        // distributedMatTransposeLocalMatMul_v1(&Pt_A_P, A_P, B_global_shape_swap_zone, myid, numprocs);   
+#ifdef TIME_MEASURE_BCG_IP
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_ip_timer_1 = MPI_Wtime();
+#endif     
         distributedMatLTransposeMatRMul(&Pt_A_P, P, A_P, myid, numprocs);
+
+#ifdef TIME_MEASURE_BCG_IP
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_ip_timer_2 = MPI_Wtime();
+        bcg_ip_local += bcg_ip_timer_2 - bcg_ip_timer_1;
+#endif
+
 #ifdef BCG_V1_DEBUG_PtAP
         if (myid == 0 && bcg_v1_loop_idx == 1) {
             local_dense_mat_print(Pt_A_P, myid);
         }
 #endif
+
 #ifdef BCG_V1_DEBUG_RtR
         if (myid == 0 && bcg_v1_loop_idx == 1) {
             local_dense_mat_print(Rt_R, myid);
         }
 #endif
+        
+#ifdef TIME_MEASURE_BCG_MAT_INV
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_inv_timer_1 = MPI_Wtime();
+#endif
         // to solve linear system PtAp * alpha = RtR to get alpha
         // Pt_A_P items are changed after this call
         LUsolver_v1(&ALPHA_mat, Pt_A_P, Rt_R, myid, numprocs);
+
+#ifdef TIME_MEASURE_BCG_MAT_INV
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_inv_timer_2 = MPI_Wtime();
+        bcg_mat_inv_local += bcg_mat_inv_timer_2 - bcg_mat_inv_timer_1;
+#endif  
+
 #ifdef BCG_V1_DEBUG_LU
         if (myid == 0 && bcg_v1_loop_idx == 1) {
             local_dense_mat_print(ALPHA_mat, myid);
         }
 #endif
+
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_1 = MPI_Wtime();
+#endif
         // P * alpha
         dense_distributedMatL_localMatR_Mul_v1(&P_alpha, P, ALPHA_mat, myid, numprocs);
+
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_2 = MPI_Wtime();
+        bcg_mat_update_local += bcg_mat_update_timer_2 - bcg_mat_update_timer_1;
+#endif  
+
 #ifdef BCG_V1_DEBUG_P_ALPHA
         if (myid == numprocs - 2 && bcg_v1_loop_idx == 0) {
             local_dense_mat_print(P_alpha, myid);
         }
 #endif
+////////////// X_new=X_old + P_alpha section
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_1 = MPI_Wtime();
+#endif
         // X_new=X_old + P_alpha
         // wasted flops, bad function def
         dense_mat_mat_add_TP(X, P_alpha, X, 1.0, 1.0, myid, numprocs);
 
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_2 = MPI_Wtime();
+        bcg_mat_update_local += bcg_mat_update_timer_2 - bcg_mat_update_timer_1;
+#endif  
+////////////////  AP * alpha section
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_1 = MPI_Wtime();
+#endif
         // AP * alpha
         dense_distributedMatL_localMatR_Mul_v1(&A_P_alpha, A_P, ALPHA_mat, myid, numprocs);
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_2 = MPI_Wtime();
+        bcg_mat_update_local += bcg_mat_update_timer_2 - bcg_mat_update_timer_1;
+#endif 
 
         // check vector norm
         long n_col = 1;
         double R_norm2squre;
         norm2square_dist_denseMat_col_n(R, &R_norm2squre, n_col, myid, numprocs);
-        if (myid == 0 && (bcg_v1_loop_idx % NUM_LOOP_PER_PRINT==0 || sqrt(R_norm2squre) < epsilon \
+        if (myid == 0 && (bcg_v1_loop_idx % BCG_NUM_LOOP_PER_PRINT==0 || sqrt(R_norm2squre) < epsilon \
             || bcg_v1_loop_idx == (max_iter-1))) {
             printf("Loop: %d, R[%d]_norm=%30.30f\n", bcg_v1_loop_idx, n_col, sqrt(R_norm2squre));
         }
+///// spmm time print section
+#ifdef TIME_MEASURE_BCG_SPMM
+        if(sqrt(R_norm2squre) < epsilon || bcg_v1_loop_idx==(max_iter-1) )
+        {
+            bcg_spmm_local = bcg_spmm_local / bcg_v1_loop_idx;
+            ierr = MPI_Reduce(&bcg_spmm_local, &bcg_spmm_global, 1, \
+                              MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            if (myid == 0)
+            {
+                printf("Loop: %d, time_BCG_SPMM=%30.30f\n", \
+                        bcg_v1_loop_idx, bcg_spmm_global);
+            }
+        }
+#endif
+////ip time print section
+#ifdef TIME_MEASURE_BCG_IP
+        if(sqrt(R_norm2squre) < epsilon || bcg_v1_loop_idx==(max_iter-1) )
+        {
+            bcg_ip_local = bcg_ip_local / bcg_v1_loop_idx;
+            ierr = MPI_Reduce(&bcg_ip_local, &bcg_ip_global, 1, \
+                              MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            if (myid == 0)
+            {
+                printf("Loop: %d, time_BCG_IP=%30.30f\n", \
+                        bcg_v1_loop_idx, bcg_ip_global);
+            }
+        }
+#endif
+////// mat update time print section 
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        if(sqrt(R_norm2squre) < epsilon || bcg_v1_loop_idx==(max_iter-1) )
+        {
+            bcg_mat_update_local = bcg_mat_update_local / bcg_v1_loop_idx;
+            ierr = MPI_Reduce(&bcg_mat_update_local, &bcg_mat_update_global, 1, \
+                              MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            if (myid == 0)
+            {
+                printf("Loop: %d, time_BCG_mat_update=%30.30f\n", \
+                        bcg_v1_loop_idx, bcg_mat_update_global);
+            }
+        }
+#endif
+///////// mat inv time print section
+#ifdef TIME_MEASURE_BCG_MAT_INV
+        if(sqrt(R_norm2squre) < epsilon || bcg_v1_loop_idx==(max_iter-1) )
+        {
+            bcg_mat_inv_local = bcg_mat_inv_local / bcg_v1_loop_idx;
+            ierr = MPI_Reduce(&bcg_mat_inv_local, &bcg_mat_inv_global, 1, \
+                              MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            if (myid == 0)
+            {
+                printf("Loop: %d, time_BCG_mat_inv=%30.30f\n", \
+                        bcg_v1_loop_idx, bcg_mat_inv_global);
+            }
+        }
+#endif
+
+
         if (sqrt(R_norm2squre) < epsilon) {
             return;
         }
+
+/////////////// R_new = R_old - AP_alpha section
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_1 = MPI_Wtime();
+#endif
+
         // R_new = R_old - AP_alpha
         dense_mat_mat_add_TP(R, A_P_alpha, R, 1.0, -1.0, myid, numprocs);
 
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_2 = MPI_Wtime();
+        bcg_mat_update_local += bcg_mat_update_timer_2 - bcg_mat_update_timer_1;
+#endif   
+
+////////////// R_new **t * R_new section
+#ifdef TIME_MEASURE_BCG_IP
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_ip_timer_1 = MPI_Wtime();
+#endif
         // calculate R_new **t * R_new
         MatTranposeMatMul(&Rnewt_Rnew, R, myid, numprocs);
+
+#ifdef TIME_MEASURE_BCG_IP
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_ip_timer_2 = MPI_Wtime();
+        bcg_ip_local += bcg_ip_timer_2 - bcg_ip_timer_1;
+#endif
+
+//////////////  solve R_old**t * R_old * beta = R_new**t * R_new to for beta section
+#ifdef TIME_MEASURE_BCG_MAT_INV
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_inv_timer_1 = MPI_Wtime();
+#endif        
         // solve R_old**t * R_old * beta = R_new**t * R_new to for beta
         // Rt_R item values are changed after this LUsolver_v1 call
         LUsolver_v1(&BETA_mat, Rt_R, Rnewt_Rnew, myid, numprocs);
+
+#ifdef TIME_MEASURE_BCG_MAT_INV
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_inv_timer_2 = MPI_Wtime();
+        bcg_mat_inv_local += bcg_mat_inv_timer_2 - bcg_mat_inv_timer_1;
+#endif  
 
         if (Rt_R.data != 0) {
             free(Rt_R.data);
@@ -228,11 +419,35 @@ void bcg_v1(csrType_local mat, denseType B, denseType X, double epsilon, int myi
         Rt_R.data = (double*) Rnewt_Rnew.data;
         Rnewt_Rnew.data = (void*) 0;
 
+//////////// P_beta= P * beta section
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_1 = MPI_Wtime();
+#endif        
         // P_beta= P * beta
         dense_distributedMatL_localMatR_Mul_v1(&P_beta, P, BETA_mat, myid, numprocs);
+
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_2 = MPI_Wtime();
+        bcg_mat_update_local += bcg_mat_update_timer_2 - bcg_mat_update_timer_1;
+#endif 
+ 
+//////////// P_new = R_new + P_beta section
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_1 = MPI_Wtime();
+#endif  
         // P_new = R_new + P_beta
         // wasted flops, bad function def
         dense_mat_mat_add_TP(R, P_beta, P, 1.0, 1.0, myid, numprocs);
+
+#ifdef TIME_MEASURE_BCG_MAT_UPDATE
+        ierr = MPI_Barrier(MPI_COMM_WORLD);
+        bcg_mat_update_timer_2 = MPI_Wtime();
+        bcg_mat_update_local += bcg_mat_update_timer_2 - bcg_mat_update_timer_1;
+#endif 
+
 #ifdef BCG_V1_DEBUG_P_NEW
         if (myid == 0 && bcg_v1_loop_idx == 5) {
             printf("In loop %d, P_new elements are: \n", bcg_v1_loop_idx);
@@ -338,7 +553,7 @@ void bcg_QR(csrType_local mat, denseType B, denseType X, double epsilon, int myi
         long n_col = 1;
         double R_norm2squre;
         norm2square_dist_denseMat_col_n(R, &R_norm2squre, n_col, myid, numprocs);
-        if (myid == 0 && (bcg_v1_loop_idx % NUM_LOOP_PER_PRINT==0 || sqrt(R_norm2squre) < epsilon \
+        if (myid == 0 && (bcg_v1_loop_idx % BCG_NUM_LOOP_PER_PRINT==0 || sqrt(R_norm2squre) < epsilon \
             || bcg_v1_loop_idx == (max_iter))) {
             printf("Loop: %d, R[%d]_norm=%30.30f\n", bcg_v1_loop_idx, n_col, sqrt(R_norm2squre));
         }

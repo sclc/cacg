@@ -15,9 +15,9 @@
 
 //#define KSMs_DEBUG 
 // #define CAL_GERSCHGORIN
-// #define CAL_LS
+#define CAL_LS
 // #define PROF_SPMM_v1
-#define PROF_SPMM_v2
+// #define PROF_SPMM_v2
 
 int main(int argc, char* argv[]) {
 

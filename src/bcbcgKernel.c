@@ -1,7 +1,7 @@
 #include "bcbcgKernel.h"
 
-#define MAXITER 85
-#define NUM_LOOP_PER_PRINT 1
+#define MAXITER 100
+#define NUM_LOOP_PER_PRINT 10
 
 // #define bcbcg_v1_DB_Ger
  // #define bcbcg_v1_DB_R
@@ -14,7 +14,7 @@
 //#define bcbcg_v1_DB_UpdatedR
 // #define bcbcg_v1_DB_LONG
 // #define LU_MAT_RAND
-#define DB_SIG_FAULT
+// #define DB_SIG_FAULT
 
 #define TIME_BCBCG_PROFILING
 #define TIME_MEASURE_BCBCG_CB_GEN
@@ -149,6 +149,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
     // exit(0);
 #endif
     //R=B-AX
+    // to comment
     dense_mat_mat_add_TP(B, A_X, R, 1.0, -1.0, myid, numprocs);
 #ifdef bcbcg_v1_DB_R
     // if (myid == numprocs - 1) {
@@ -163,6 +164,8 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
 #endif
 
     // start looping phrase for BCBCG
+    // 
+    //
     long maxIters = MAXITER;
     long iterCounter;
     for (iterCounter = 0; iterCounter < maxIters; iterCounter++) {
@@ -196,7 +199,9 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
             free(Q_Mat.data);
             Q_Mat.data = S_Mat.data;
             S_Mat.data = (double *) calloc(S_Mat.local_num_col * S_Mat.local_num_row, sizeof (double));
-        } else {
+        } 
+        else 
+        {
             // calculate QtAS by using old AQ and new S
             // A is SPD, so QtA = (AQ)**t
             // QtAS = (AQ)**t * S, sort of inner product
@@ -204,6 +209,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
             ierr = MPI_Barrier(MPI_COMM_WORLD);
             ip_collective_timer_1 = MPI_Wtime();
 #endif
+            // to comment
             distributedMatLTransposeMatRMul_updated(&QtAS_Mat, AQ_Mat, S_Mat, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_IP_COLLECTIVE
@@ -218,6 +224,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
         // ierr = MPI_Barrier(MPI_COMM_WORLD);
         mat_inv_local_timer1 = MPI_Wtime();     
 #endif
+            // to comment
             LUsolver_v1_KeeplhsMat(&beta_Mat, QtAQ_Mat, QtAS_Mat, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_MAT_INV_LOCAL
@@ -237,6 +244,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
         // ierr = MPI_Barrier(MPI_COMM_WORLD);
         mat_update_local_timer1 = MPI_Wtime();
 #endif
+            // to comment
             dense_distributedMatL_localMatR_Mul_v1(&Qbeta_Mat, Q_Mat, beta_Mat, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_MAT_UPDATE_LOCAL
@@ -249,6 +257,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
         // ierr = MPI_Barrier(MPI_COMM_WORLD);
         mat_update_local_timer1 = MPI_Wtime();
 #endif
+            // to comment
             dense_mat_mat_add_TP(S_Mat, Qbeta_Mat, Q_Mat, 1.0, -1.0, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_MAT_UPDATE_LOCAL
@@ -293,7 +302,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
             ierr = MPI_Barrier(MPI_COMM_WORLD);
             ip_collective_timer_1 = MPI_Wtime();
 #endif
-
+        // to comment
         distributedMatLTransposeMatRMul(&QtAQ_Mat, Q_Mat, AQ_Mat, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_IP_COLLECTIVE
@@ -316,7 +325,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
             ierr = MPI_Barrier(MPI_COMM_WORLD);
             ip_collective_timer_1 = MPI_Wtime();
 #endif
-
+        // to comment
         distributedMatLTransposeMatRMul_updated(&QtR_Mat, Q_Mat, R, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_IP_COLLECTIVE
@@ -330,7 +339,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
         // ierr = MPI_Barrier(MPI_COMM_WORLD);
         mat_inv_local_timer1 = MPI_Wtime();     
 #endif
-
+        // to comment
         LUsolver_v1_KeeplhsMat(&alpha_Mat, QtAQ_Mat, QtR_Mat, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_MAT_INV_LOCAL
@@ -362,6 +371,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
         // ierr = MPI_Barrier(MPI_COMM_WORLD);
         mat_update_local_timer1 = MPI_Wtime();
 #endif
+        // to comment
         dense_distributedMatL_localMatR_Mul_v1(&Qalpha_Mat, Q_Mat, alpha_Mat, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_MAT_UPDATE_LOCAL
@@ -375,6 +385,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
         // ierr = MPI_Barrier(MPI_COMM_WORLD);
         mat_update_local_timer1 = MPI_Wtime();
 #endif
+        // to comment
         dense_distributedMatL_localMatR_Mul_v1(&AQalpha_Mat, AQ_Mat, alpha_Mat, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_MAT_UPDATE_LOCAL
@@ -398,6 +409,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
         // ierr = MPI_Barrier(MPI_COMM_WORLD);
         mat_update_local_timer1 = MPI_Wtime();
 #endif
+        // to comment
         dense_mat_mat_add_TP(X, Qalpha_Mat, X, 1.0, 1.0, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_MAT_UPDATE_LOCAL
@@ -420,6 +432,7 @@ void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
         // ierr = MPI_Barrier(MPI_COMM_WORLD);
         mat_update_local_timer1 = MPI_Wtime();
 #endif
+        // to comment
         dense_mat_mat_add_TP(R, AQalpha_Mat, R, 1.0, -1.0, myid, numprocs);
 
 #ifdef TIME_MEASURE_BCBCG_MAT_UPDATE_LOCAL
