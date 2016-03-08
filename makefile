@@ -1,19 +1,22 @@
 #CXX ?= mpiFCCpx
-CC = mpifccpx
-CXX= mpiFCCpx 
-#CXX="g++" 
-FC="mpifrtpx" 
+#CXX= mpiFCCpx 
+# FC="mpifrtpx" 
 
-CPPFLAGS = -I/opt/klocal/include
+CC=mpicc 
+CXX=mpic++ 
+CPPFLAGS =
+CFLAGS=-O -Wall
+CXXFLAGS=-O -Wall
 
 #k-computer
-CFLAGS=-Xg -O2 -KPIC -O -Wall
-
-#k-computer
+#CXX ?= mpiFCCpx
+#CXX= mpiFCCpx 
+#FC="mpifrtpx" 
+#CFLAGS=-Xg -O2 -KPIC -O -Wall
 #FCFLAGS=-X9 -O2 -KPIC -O
+#CXXFLAGS= -Xg -O2 -KPIC -O -Wall
 
-#k-computer
-CXXFLAGS= -Xg -O2 -KPIC -O -Wall
+
 
 
 # LDFLAGS = -Wl,-rpath,/opt/klocal/lib -Wl,-rpath,/opt/klocal/lib \
@@ -26,13 +29,13 @@ CXXFLAGS= -Xg -O2 -KPIC -O -Wall
 # -lpthread -lstdc++ -ltrtmet -ltrtmet_c -ldl -lmpi -ltofucom -ltofutop -lnsl -lutil -ltrtfdb \
 # -lfjrtcl -ltrtth -lmpg -lmpgpthread -lpapi -lrt -lelf -lgcc_s -ldl
 
-LDFLAGS = -Wl,-rpath,/opt/klocal/lib -Wl,-rpath,/opt/klocal/lib \
--L/opt/klocal/lib  -lpetsc -SCALAPACK -SSL2 -lpthread -ltrtmetcpp \
--Wl,-rpath,/opt/FJSVpxtof/sparc64fx/lib64 -L/opt/FJSVpxtof/sparc64fx/lib64 \
--Wl,-rpath,/opt/FJSVxosmmm/lib64 -L/opt/FJSVxosmmm/lib64 \
--lmpi_cxx -lfjdemgl -lstd_mt -lpthread -lstdc++ -ltrtmetcpp -lmpi_cxx -lfjdemgl -lstd_mt \
--lpthread -lstdc++ -ltrtmet -ltrtmet_c -ldl -lmpi -ltofucom -ltofutop -lnsl -lutil -ltrtfdb \
--lfjrtcl -ltrtth -lmpg -lmpgpthread -lpapi -lrt -lelf -lgcc_s -ldl
+# LDFLAGS = -Wl,-rpath,/opt/klocal/lib -Wl,-rpath,/opt/klocal/lib \
+# -L/opt/klocal/lib  -lpetsc -SCALAPACK -SSL2 -lpthread -ltrtmetcpp \
+# -Wl,-rpath,/opt/FJSVpxtof/sparc64fx/lib64 -L/opt/FJSVpxtof/sparc64fx/lib64 \
+# -Wl,-rpath,/opt/FJSVxosmmm/lib64 -L/opt/FJSVxosmmm/lib64 \
+# -lmpi_cxx -lfjdemgl -lstd_mt -lpthread -lstdc++ -ltrtmetcpp -lmpi_cxx -lfjdemgl -lstd_mt \
+# -lpthread -lstdc++ -ltrtmet -ltrtmet_c -ldl -lmpi -ltofucom -ltofutop -lnsl -lutil -ltrtfdb \
+# -lfjrtcl -ltrtth -lmpg -lmpgpthread -lpapi -lrt -lelf -lgcc_s -ldl
 
 program_NAME := bcbcg
 program_C_SRCS := $(wildcard ./src/*.c)
