@@ -31,7 +31,8 @@ int main(int argc, char* argv[]) {
     char * str_solverIdx;
     char * str_sVal;
 
-    double epsilon = 1e-5;
+    //double epsilon = 1e-5;
+    double epsilon = 20000;
 
     if (argc < 7) {
         printf("Argument setting is wrong.\n");

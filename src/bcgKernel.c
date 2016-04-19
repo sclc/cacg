@@ -14,10 +14,10 @@
 //#define BCG_V1_DEBUG_P_NEW
 //#define BCG_V1_DEBUG_AP
 
-#define TIME_MEASURE_BCG_SPMM
-#define TIME_MEASURE_BCG_IP
-#define TIME_MEASURE_BCG_MAT_UPDATE
-#define TIME_MEASURE_BCG_MAT_INV
+//#define TIME_MEASURE_BCG_SPMM
+//#define TIME_MEASURE_BCG_IP
+//#define TIME_MEASURE_BCG_MAT_UPDATE
+//#define TIME_MEASURE_BCG_MAT_INV
 
 void bcg_v1(csrType_local mat, denseType B, denseType X, double epsilon, int myid, int numprocs) 
 {
@@ -301,7 +301,7 @@ void bcg_v1(csrType_local mat, denseType B, denseType X, double epsilon, int myi
         norm2square_dist_denseMat_col_n(R, &R_norm2squre, n_col, myid, numprocs);
         if (myid == 0 && (bcg_v1_loop_idx % BCG_NUM_LOOP_PER_PRINT==0 || sqrt(R_norm2squre) < epsilon \
             || bcg_v1_loop_idx == (max_iter-1))) {
-            printf("Loop: %d, R[%d]_norm=%30.30f\n", bcg_v1_loop_idx, n_col, sqrt(R_norm2squre));
+            printf("id:%d, Loop: %d, R[%d]_norm=%30.30f\n", myid, bcg_v1_loop_idx, n_col, sqrt(R_norm2squre));
         }
 ///// spmm time print section
 #ifdef TIME_MEASURE_BCG_SPMM

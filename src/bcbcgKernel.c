@@ -16,16 +16,17 @@
 // #define LU_MAT_RAND
 // #define DB_SIG_FAULT
 
-#define TIME_BCBCG_PROFILING
-#define TIME_MEASURE_BCBCG_CB_GEN
-#define TIME_MEASURE_BCBCG_IP_COLLECTIVE
-#define TIME_MEASURE_BCBCG_SPMM_COLLECTIVE
-#define TIME_MEASURE_BCBCG_MAT_UPDATE_LOCAL
-#define TIME_MEASURE_BCBCG_MAT_INV_LOCAL
+//#define TIME_BCBCG_PROFILING
+//#define TIME_MEASURE_BCBCG_CB_GEN
+//#define TIME_MEASURE_BCBCG_IP_COLLECTIVE
+//#define TIME_MEASURE_BCBCG_SPMM_COLLECTIVE
+//#define TIME_MEASURE_BCBCG_MAT_UPDATE_LOCAL
+//#define TIME_MEASURE_BCBCG_MAT_INV_LOCAL
 // s: s-step
 
 void bcbcg_v1(csrType_local mat, denseType B, denseType X, \
-              long s, double epsilon, int myid, int numprocs) {
+              long s, double epsilon, int myid, int numprocs) 
+{
 
 #ifdef TIME_BCBCG_PROFILING
     int ierr;
